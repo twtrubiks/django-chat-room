@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Chat{% endblock %}
+{% block content %}
+<div class="form-group">
+    <label for="room-name-input">What chat room would you like to enter?</label>
+    <input type="text" class="form-control" id="room-name-input">
+</div>
+    <input id="room-name-submit" class="btn btn-success" type="button" value="Enter" />
+{% endblock %}
+
+
+{% block js %}
+<script>
+    $("#room-name-input").focus();
+    $("#room-name-input").keyup(function(e){
+      if (e.keyCode === 13) {  // enter, return
+            $("#room-name-submit").click();
+        }
+    });
+
+    $("#room-name-submit").click(function() {
+      var room_name = $("#room-name-input").val();
+      window.location.pathname = '/chat/chat_' + room_name + '_{{ uid4 }}/';
+    });
+</script>
+{% endblock %}

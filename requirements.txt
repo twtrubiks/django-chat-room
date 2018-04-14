@@ -1,0 +1,4 @@
+Django==2.0.4
+django-bootstrap3==9.1.0
+channels==2.0.2
+channels_redis==2.1.1
