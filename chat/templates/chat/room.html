@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load staticfiles %}
+{% load static %}
 {% block title %}Chat Room{% endblock %}
 {% block content %}
     <div class="row">
@@ -14,7 +14,7 @@
                             {% for message in chat_messages %}
                                 {% if message.user == user %}
                                 <li class="right clearfix"><span class="chat-img pull-right">
-                                    <img src="http://placehold.it/50/FA6F57/fff&text=ME" alt="User Avatar" class="img-circle"/>
+                                    <img src="https://dummyimage.com/50/fa7057/fff.png&text=ME" alt="User Avatar" class="img-circle"/>
                                 </span>
                                     <div class="chat-body clearfix">
                                         <div class="header">
@@ -29,7 +29,7 @@
                                 </li>
                                 {% else %}
                                 <li class="left clearfix"><span class="chat-img pull-left">
-                                    <img src="http://placehold.it/50/55C1E7/fff&text=U" alt="User Avatar" class="img-circle"/>
+                                    <img src="https://dummyimage.com/50/55C1E7/fff.png&text=U" alt="User Avatar" class="img-circle"/>
                                 </span>
                                     <div class="chat-body clearfix">
                                         <div class="header">
@@ -84,10 +84,10 @@
         var receive_user = data['user'];
         var user = "{{user}}";
         if (receive_user === user) {
-            $('<li class="right clearfix"><span class="chat-img pull-right"><img src="http://placehold.it/50/FA6F57/fff&text=ME" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><small class=" text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small><strong class="pull-right primary-font">'+user+'</strong></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
+            $('<li class="right clearfix"><span class="chat-img pull-right"><img src="https://dummyimage.com/50/fa7057/fff.png&text=ME" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><small class=" text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small><strong class="pull-right primary-font">'+user+'</strong></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
         }
         else{
-            $('<li class="left clearfix"><span class="chat-img pull-left"><img src="http://placehold.it/50/55C1E7/fff&text=U" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><strong class="primary-font">'+ receive_user+ '</strong><small class="pull-right text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
+            $('<li class="left clearfix"><span class="chat-img pull-left"><img src="https://dummyimage.com/50/55C1E7/fff.png&text=U" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><strong class="primary-font">'+ receive_user+ '</strong><small class="pull-right text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
         }
         $('#all_messages').scrollTop($('#all_messages')[0].scrollHeight);
         };

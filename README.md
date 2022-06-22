@@ -1,6 +1,6 @@
-# django-chat-room
+# docker-django-chat-room
 
- django-chat-room 💬
+docker-django-chat-room use django-channels3💬
 
 * [Youtube Tutorial - chat-room use django-channels2](https://youtu.be/CoVdpZLCIT4)
 
@@ -88,7 +88,7 @@ var chatSocket = new ReconnectingWebSocket(websocket_str);
 
 ## 執行環境
 
-* Python 3.6.4
+* Python 3.8
 
 ## Reference
 

@@ -8,7 +8,7 @@ from .models import Message
 # Create your views here.
 
 def index(request):
-    uid4 = str(uuid.uuid4())
+    uid4 = uuid.uuid4().hex
     return render(request, 'chat/index.html', {'uid4': uid4})
 
 

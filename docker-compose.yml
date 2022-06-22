@@ -1,13 +1,10 @@
-version: '3'
+version: '3.5'
 services:
-
-    # docker run --name some-redis  -p 6379:6379  -d redis redis-server --appendonly yes
 
     redis:
       container_name: redis
       image: redis
       restart: always
-      command: ["redis-server", "--appendonly", "yes"]
       ports:
         - "6379:6379"
       volumes:
@@ -29,6 +26,6 @@ services:
         - .:/django_chat_room
       depends_on:
         - redis
+
 volumes:
     redis-data:
-    pgdata:
