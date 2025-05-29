@@ -1,41 +1,44 @@
 {% load static %}
-{% load bootstrap3 %}
+{% load django_bootstrap5 %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}{% endblock %}</title>
-    <link href="{% static "stylesheets/login.css" %}" rel="stylesheet">
-    <link href="{% static "stylesheets/chat.css" %}" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/fontawesome.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.1.1/css/all.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     {% bootstrap_css %}
     {% bootstrap_javascript %}
-
 </head>
 <body>
 
-<nav class="navbar navbar-default">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container-fluid">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="{% url "chat" %}">Django chat Tutorial use channels 3.0.4</a>
+        <a class="navbar-brand" href="{% url 'chat' %}">Django Chat (Channels 4.2.2)</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                {% if request.user.is_authenticated %}
+                    <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-user"></i> Hello {{ request.user }}</a></li>
+                    <li class="nav-item ms-2">
+                        <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link btn btn-link" style="border: none; color: rgba(255,255,255,.55);"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'register' %}"><i class="fas fa-user-plus"></i> Sign up</a></li>
+                {% endif %}
+            </ul>
         </div>
-        <ul class="nav navbar-nav navbar-right">
-
-            {% if request.user.is_authenticated %}
-                <li><a href="#"><span class="glyphicon glyphicon-user"></span> Hello {{ request.user }}</a>
-                </li>
-                <li><a href="{% url "logout" %}"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
-            {% else %}
-                <li><a href="{% url "login" %}"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
-                <li><a href="{% url "register" %}"><span class="glyphicon glyphicon-log-in"></span> Sign up</a></li>
-            {% endif %}
-        </ul>
     </div>
 </nav>
 
-
-<div class="container">
+<div class="container mt-4">
+    {% autoescape off %}{% bootstrap_messages %}{% endautoescape %}
     {% block content %}
     {% endblock %}
 </div>
@@ -43,6 +46,5 @@
 
 {% block js %}
 {% endblock %}
-
 
 </html>

@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% load bootstrap3 %}
+{% load django_bootstrap5 %}
 {% block title %}Create an account{% endblock %}
 {% block content %}
-    <div class="jumbotron">
-        <h1>Sign up for Free</h1>
-        <p>create an account</p>
+    <div class="p-5 mb-4 bg-light rounded-3">
+        <div class="container-fluid py-5">
+            <h1 class="display-5 fw-bold">Sign up for Free</h1>
+            <p class="col-md-8 fs-4">Create an account</p>
+        </div>
     </div>
 
     <form action="." method="post" class="form">
         {% csrf_token %}
-        {% bootstrap_form user_form %}
-        {% buttons %}
-            <button type="submit" class="btn btn-primary">
-                Create my account
-            </button>
-        {% endbuttons %}
+        {% bootstrap_form user_form layout='vertical' %}
+        <button type="submit" class="btn btn-primary mt-3">
+            Create my account
+        </button>
     </form>
 {% endblock %}

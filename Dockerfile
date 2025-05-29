@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.12-slim
 LABEL maintainer twtrubiks
 ENV PYTHONUNBUFFERED 1
 RUN mkdir /django_chat_room

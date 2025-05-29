@@ -1,6 +1,8 @@
 # docker-django-chat-room
 
-docker-django-chat-room use django-channels3💬
+django 5 + Python 3.12
+
+docker-django-chat-room use django-channels 4💬
 
 * [Youtube Tutorial - chat-room use django-channels2](https://youtu.be/CoVdpZLCIT4)
 
@@ -16,7 +18,7 @@ docker-django-chat-room use django-channels3💬
 
 未登入無法聊天（ 也無法看到聊天內容 ）
 
-![alt tag](https://i.imgur.com/UrdlV1e.png)
+![alt tag](https://cdn.imgpile.com/f/ddLLqTj_xl.png)
 
 登入註冊頁面
 
@@ -24,7 +26,7 @@ docker-django-chat-room use django-channels3💬
 
 聊天畫面
 
-![alt tag](https://i.imgur.com/gT8hJ89.png)
+![alt tag](https://cdn.imgpile.com/f/ZovaTp3_xl.png)
 
 ## 如何執行
 
@@ -88,14 +90,13 @@ var chatSocket = new ReconnectingWebSocket(websocket_str);
 
 ## 執行環境
 
-* Python 3.8
+* Python 3.12
 
 ## Reference
 
 * [Django](https://www.djangoproject.com/)
 * [Channels](https://github.com/django/channels)
 * [reconnecting-websocket](https://github.com/joewalnes/reconnecting-websocket)
-* [聊天室版型](https://bootsnipp.com/snippets/featured/chat-widget)
 
 ## Donation
 

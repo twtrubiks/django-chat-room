@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Chat{% endblock %}
 {% block content %}
-<div class="form-group">
-    <label for="room-name-input">What chat room would you like to enter?</label>
-    <input type="text" class="form-control" id="room-name-input">
+<div style="padding-top: 70px;">
+    <div class="form-group">
+        <label for="room-name-input">What chat room would you like to enter?</label>
+        <input type="text" class="form-control" id="room-name-input">
+        <input id="room-name-submit" class="btn btn-success mt-2" type="button" value="Enter" />
+    </div>
 </div>
-    <input id="room-name-submit" class="btn btn-success" type="button" value="Enter" />
 {% endblock %}
 
 

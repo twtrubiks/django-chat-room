@@ -2,67 +2,62 @@
 {% load static %}
 {% block title %}Chat Room{% endblock %}
 {% block content %}
-    <div class="row">
-        <div class="col-md-5">
-            <div class="panel panel-primary">
-                <div class="panel-heading">
-                    <span class="glyphicon glyphicon-comment"></span> Chat
+    <link href="{% static 'stylesheets/chat.css' %}" rel="stylesheet">
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                <div>
+                    <div class="chat-title">{{ request.user }}</div>
+                    <div class="chat-status">線上</div>
                 </div>
-                <div class="panel-body" id="all_messages">
-                    <ul class="chat">
-                        {% if user.is_authenticated %}
-                            {% for message in chat_messages %}
-                                {% if message.user == user %}
-                                <li class="right clearfix"><span class="chat-img pull-right">
-                                    <img src="https://dummyimage.com/50/fa7057/fff.png&text=ME" alt="User Avatar" class="img-circle"/>
-                                </span>
-                                    <div class="chat-body clearfix">
-                                        <div class="header">
-                                            <small class=" text-muted"><span class="glyphicon glyphicon-time"></span>{{message.created|date:"H:i"}}
-                                            </small>
-                                            <strong class="pull-right primary-font">{{ message.user }}</strong>
-                                        </div>
-                                        <p>
-                                            {{ message.message|safe }}
-                                        </p>
-                                    </div>
-                                </li>
-                                {% else %}
-                                <li class="left clearfix"><span class="chat-img pull-left">
-                                    <img src="https://dummyimage.com/50/55C1E7/fff.png&text=U" alt="User Avatar" class="img-circle"/>
-                                </span>
-                                    <div class="chat-body clearfix">
-                                        <div class="header">
-                                            <strong class="primary-font">{{ message.user }}</strong>
-                                            <small class="pull-right text-muted">
-                                                <span class="glyphicon glyphicon-time"></span>{{message.created|date:"H:i"}}
-                                            </small>
-                                        </div>
-                                        <p>
-                                            {{ message.message|safe }}
-                                        </p>
-                                    </div>
-                                </li>
-                                {% endif %}
-                            {% empty %}
+            </div>
+            <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn" style="cursor: pointer;">登出</button>
+            </form>
+        </div>
 
-                            {% endfor %}
-                        {% else %}
-                                <div>Please Login</div>
-                        {% endif %}
-
-                    </ul>
-                </div>
-                <div class="panel-footer">
-                    <div class="input-group">
-                        <input id="btn-input" type="text" class="form-control input-sm"
-                               placeholder="Type your message here..."/>
-                            <span class="input-group-btn">
-                                <button class="btn btn-warning btn-sm" id="btn-chat">
-                                    Send</button>
-                            </span>
+        <div class="chat-messages" id="chatMessages">
+            {% if user.is_authenticated %}
+                {% for message_item in chat_messages %}
+                    {% if message_item.user == user %}
+                    <div class="message own">
+                        <div class="message-avatar">{{ user.username|first|upper }}</div>
+                        <div class="message-content">
+                            <div class="message-bubble">{{ message_item.message|safe }}</div>
+                            <div class="message-time">{{ message_item.created|date:"H:i" }}</div>
+                        </div>
                     </div>
+                    {% else %}
+                    <div class="message">
+                        <div class="message-avatar">{{ message_item.user.username|first|upper }}</div>
+                        <div class="message-content">
+                            <div class="message-bubble">{{ message_item.message|safe }}</div>
+                            <div class="message-time">{{ message_item.created|date:"H:i" }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="message" style="justify-content: center; color: rgba(255,255,255,0.7); padding: 10px;">No messages yet.</div>
+                {% endfor %}
+            {% else %}
+                <div class="message" style="justify-content: center; color: rgba(255,255,255,0.7); padding: 10px;">Please Login to see messages.</div>
+            {% endif %}
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <span>正在輸入</span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
                 </div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <div class="input-container">
+                <textarea class="message-input" id="btn-input" placeholder="輸入訊息..." rows="1"></textarea>
+                <button class="send-btn" id="btn-chat">➤</button>
             </div>
         </div>
     </div>
@@ -71,7 +66,13 @@
 {% block js %}
 <script type="text/javascript" src='{% static "js/reconnecting-websocket.min.js" %}'></script>
 <script>
-    $('#all_messages').scrollTop($('#all_messages')[0].scrollHeight);
+    $(document).ready(function() {
+        const chatMessagesContainer = $('#chatMessages');
+        if (chatMessagesContainer.length) {
+            // Scroll to bottom after initial messages are loaded
+            chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
+        }
+    });
     var room_mame = '{{ room_name }}';
     var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
     var websocket_str= ws_scheme+'://' + window.location.host + '/ws/chat/' + room_mame + '/';
@@ -79,18 +80,45 @@
 
     chatSocket.onmessage = function (e) {
         var data = JSON.parse(e.data);
-        var message = data['message'];
+        var messageText = data['message'];
         var now_time = data['now_time'];
         var receive_user = data['user'];
-        var user = "{{user}}";
-        if (receive_user === user) {
-            $('<li class="right clearfix"><span class="chat-img pull-right"><img src="https://dummyimage.com/50/fa7057/fff.png&text=ME" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><small class=" text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small><strong class="pull-right primary-font">'+user+'</strong></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
+        var currentUser = "{{user}}";
+        var chatMessagesContainer = $('#chatMessages');
+        var messageHtml = '';
+
+        // Remove "No messages yet" or "Please Login" placeholder if present
+        chatMessagesContainer.find('.message[style*="justify-content: center"]').remove();
+
+        if (receive_user === currentUser) {
+            messageHtml = `
+            <div class="message own">
+                <div class="message-avatar">${currentUser.charAt(0).toUpperCase()}</div>
+                <div class="message-content">
+                    <div class="message-bubble">${messageText}</div>
+                    <div class="message-time">${now_time}</div>
+                </div>
+            </div>`;
+        } else {
+            messageHtml = `
+            <div class="message">
+                <div class="message-avatar">${receive_user.charAt(0).toUpperCase()}</div>
+                <div class="message-content">
+                    <div class="message-bubble">${messageText}</div>
+                    <div class="message-time">${now_time}</div>
+                </div>
+            </div>`;
         }
-        else{
-            $('<li class="left clearfix"><span class="chat-img pull-left"><img src="https://dummyimage.com/50/55C1E7/fff.png&text=U" alt="User Avatar" class="img-circle"/></span><div class="chat-body clearfix"><div class="header"><strong class="primary-font">'+ receive_user+ '</strong><small class="pull-right text-muted"><span class="glyphicon glyphicon-time"></span>'+now_time+'</small></div><p>'+message+'</p></div></li>').appendTo($('.chat'))
+
+        var typingIndicator = chatMessagesContainer.find('#typingIndicator');
+        if (typingIndicator.length > 0) {
+            $(messageHtml).insertBefore(typingIndicator);
+        } else {
+            $(messageHtml).appendTo(chatMessagesContainer);
         }
-        $('#all_messages').scrollTop($('#all_messages')[0].scrollHeight);
-        };
+
+        chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
+    };
 
         chatSocket.onclose = function (e) {
             console.error('Chat socket closed unexpectedly');
