@@ -1,4 +1,3 @@
-version: '3.5'
 services:
 
     redis:
@@ -9,12 +8,6 @@ services:
         - "6379:6379"
       volumes:
         - redis-data:/data
-
-    migration:
-      build: .
-      command: bash -c "python manage.py makemigrations chat && python manage.py migrate"
-      volumes:
-        - .:/django_chat_room
 
     app:
       build: .
