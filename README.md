@@ -1,6 +1,6 @@
 # docker-django-chat-room
 
-django 5 + Python 3.12
+django 6 + Python 3.13
 
 docker-django-chat-room use django-channels 4💬
 
@@ -33,7 +33,7 @@ docker-django-chat-room use django-channels 4💬
 確認電腦有安裝 docker 後，直接執行以下指令即可，
 
 ```cmd
-docker-compose up
+docker compose up
 ```
 
 ![alt tag](https://i.imgur.com/R5mXwQU.png)
@@ -41,7 +41,7 @@ docker-compose up
 如何移除 ( 包含移除 volume )，
 
 ```cmd
-docker-compose down -v
+docker compose down -v
 ```
 
 詳細的詳細說明，在上一篇 [django-channels2-tutorial](https://github.com/twtrubiks/django-channels2-tutorial) 都說明過了。
@@ -56,27 +56,41 @@ docker-compose down -v
 
 ### 說明二
 
-為什麼需要使用到 [reconnecting-websocket](https://github.com/joewalnes/reconnecting-websocket)，原因是假設當 websocket 斷線時，他並不會自動重新連結，
+當 websocket 斷線時，原生 `WebSocket` 不會自動重新連線。先前版本是引入 [reconnecting-websocket](https://github.com/joewalnes/reconnecting-websocket) 來處理，
 
-我們可以透過這個 js ，幫我們完成當 websocket 斷線時，自動重新連線的工作。
+但該 lib 已長期未維護，現在直接在 `room.html` 中用原生 `WebSocket` 搭配指數退避（1s 起、最多 30s、1.5x 成長）自寫重連邏輯，
+
+成功 `onopen` 時會把延遲重置回 1s；送訊息前以 `readyState === WebSocket.OPEN` 守護，避免重連期間呼叫 `send()` 拋例外。
 
 ### 說明三
 
 js 中的 `{{ room_name }}` 用法，像是在 django_chat_room/chat/templates/chat/[room.html](https://github.com/twtrubiks/django-chat-room/blob/master/chat/templates/chat/room.html) 中的
 
 ```javascript
-....
-$('#all_messages').scrollTop($('#all_messages')[0].scrollHeight);
-var room_mame = '{{ room_name }}';
-var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
-var websocket_str= ws_scheme+'://' + window.location.host + '/ws/chat/' + room_mame + '/';
-var chatSocket = new ReconnectingWebSocket(websocket_str);
-...
+var room_name = '{{ room_name }}';
+var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+var websocket_str = ws_scheme + '://' + window.location.host + '/ws/chat/' + room_name + '/';
+
+var chatSocket;
+var reconnectDelay = 1000;
+var maxDelay = 30000;
+
+function connectWebSocket() {
+    chatSocket = new WebSocket(websocket_str);
+    chatSocket.onopen = function () { reconnectDelay = 1000; };
+    chatSocket.onmessage = function (e) { /* ... */ };
+    chatSocket.onclose = function () {
+        setTimeout(connectWebSocket, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 1.5, maxDelay);
+    };
+    chatSocket.onerror = function () { chatSocket.close(); };
+}
+connectWebSocket();
 ```
 
-為什麼可以使用 `{{ room_name }}` 這種寫法，原因是 [jinja2](http://jinja.pocoo.org/) 的關係，不過這樣就不能單獨把這段 js 獨立
+為什麼可以使用 `{{ room_name }}` 這種寫法，原因是 Django template engine 的關係，不過這樣就不能單獨把這段 js 獨立
 
-出來成一隻 .js 檔案，因為這樣的話 jinja2 就會失效，但如果真的硬要抽出來也是可以，我們可以把它 render
+出來成一隻 .js 檔案，因為這樣的話 template 變數就會失效，但如果真的硬要抽出來也是可以，我們可以把它 render
 
 到某個 hidden 的欄位，然後再用 js 去抓他的值。
 
@@ -90,13 +104,12 @@ var chatSocket = new ReconnectingWebSocket(websocket_str);
 
 ## 執行環境
 
-* Python 3.12
+* Python 3.13
 
 ## Reference
 
 * [Django](https://www.djangoproject.com/)
 * [Channels](https://github.com/django/channels)
-* [reconnecting-websocket](https://github.com/joewalnes/reconnecting-websocket)
 
 ## Donation
 

@@ -64,7 +64,6 @@
 {% endblock %}
 
 {% block js %}
-<script type="text/javascript" src='{% static "js/reconnecting-websocket.min.js" %}'></script>
 <script>
     $(document).ready(function() {
         const chatMessagesContainer = $('#chatMessages');
@@ -73,71 +72,92 @@
             chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
         }
     });
-    var room_mame = '{{ room_name }}';
-    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
-    var websocket_str= ws_scheme+'://' + window.location.host + '/ws/chat/' + room_mame + '/';
-    var chatSocket = new ReconnectingWebSocket(websocket_str);
+    var room_name = '{{ room_name }}';
+    var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    var websocket_str = ws_scheme + '://' + window.location.host + '/ws/chat/' + room_name + '/';
 
-    chatSocket.onmessage = function (e) {
-        var data = JSON.parse(e.data);
-        var messageText = data['message'];
-        var now_time = data['now_time'];
-        var receive_user = data['user'];
-        var currentUser = "{{user}}";
-        var chatMessagesContainer = $('#chatMessages');
-        var messageHtml = '';
+    var chatSocket;
+    var reconnectDelay = 1000;
+    var maxDelay = 30000;
 
-        // Remove "No messages yet" or "Please Login" placeholder if present
-        chatMessagesContainer.find('.message[style*="justify-content: center"]').remove();
+    function connectWebSocket() {
+        chatSocket = new WebSocket(websocket_str);
 
-        if (receive_user === currentUser) {
-            messageHtml = `
-            <div class="message own">
-                <div class="message-avatar">${currentUser.charAt(0).toUpperCase()}</div>
-                <div class="message-content">
-                    <div class="message-bubble">${messageText}</div>
-                    <div class="message-time">${now_time}</div>
-                </div>
-            </div>`;
-        } else {
-            messageHtml = `
-            <div class="message">
-                <div class="message-avatar">${receive_user.charAt(0).toUpperCase()}</div>
-                <div class="message-content">
-                    <div class="message-bubble">${messageText}</div>
-                    <div class="message-time">${now_time}</div>
-                </div>
-            </div>`;
-        }
-
-        var typingIndicator = chatMessagesContainer.find('#typingIndicator');
-        if (typingIndicator.length > 0) {
-            $(messageHtml).insertBefore(typingIndicator);
-        } else {
-            $(messageHtml).appendTo(chatMessagesContainer);
-        }
-
-        chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
-    };
-
-        chatSocket.onclose = function (e) {
-            console.error('Chat socket closed unexpectedly');
+        chatSocket.onopen = function () {
+            console.log('Chat socket connected');
+            reconnectDelay = 1000;
         };
 
-        $("#btn-input").focus();
-        $("#btn-input").keyup(function(e){
-          if (e.keyCode === 13) {  // enter, return
-                $("#btn-chat").click();
-            }
-        });
+        chatSocket.onmessage = function (e) {
+            var data = JSON.parse(e.data);
+            var messageText = data['message'];
+            var now_time = data['now_time'];
+            var receive_user = data['user'];
+            var currentUser = "{{user}}";
+            var chatMessagesContainer = $('#chatMessages');
+            var messageHtml = '';
 
-        $("#btn-chat").click(function() {
-          var message = $('#btn-input').val();
+            // Remove "No messages yet" or "Please Login" placeholder if present
+            chatMessagesContainer.find('.message[style*="justify-content: center"]').remove();
+
+            if (receive_user === currentUser) {
+                messageHtml = `
+                <div class="message own">
+                    <div class="message-avatar">${currentUser.charAt(0).toUpperCase()}</div>
+                    <div class="message-content">
+                        <div class="message-bubble">${messageText}</div>
+                        <div class="message-time">${now_time}</div>
+                    </div>
+                </div>`;
+            } else {
+                messageHtml = `
+                <div class="message">
+                    <div class="message-avatar">${receive_user.charAt(0).toUpperCase()}</div>
+                    <div class="message-content">
+                        <div class="message-bubble">${messageText}</div>
+                        <div class="message-time">${now_time}</div>
+                    </div>
+                </div>`;
+            }
+
+            var typingIndicator = chatMessagesContainer.find('#typingIndicator');
+            if (typingIndicator.length > 0) {
+                $(messageHtml).insertBefore(typingIndicator);
+            } else {
+                $(messageHtml).appendTo(chatMessagesContainer);
+            }
+
+            chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
+        };
+
+        chatSocket.onclose = function () {
+            console.error('Chat socket closed, reconnecting in', reconnectDelay, 'ms');
+            setTimeout(connectWebSocket, reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 1.5, maxDelay);
+        };
+
+        chatSocket.onerror = function () {
+            chatSocket.close();
+        };
+    }
+
+    connectWebSocket();
+
+    $("#btn-input").focus();
+    $("#btn-input").keyup(function(e){
+      if (e.keyCode === 13) {  // enter, return
+            $("#btn-chat").click();
+        }
+    });
+
+    $("#btn-chat").click(function() {
+      var message = $('#btn-input').val();
+      if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
                 'message': message
           }));
           $('#btn-input').val('');
-
-        });
+      }
+    });
 </script>
 {% endblock %}
