@@ -18,7 +18,7 @@ docker-django-chat-room use django-channels 4💬
 
 未登入無法聊天（ 也無法看到聊天內容 ）
 
-![alt tag](https://cdn.imgpile.com/f/ddLLqTj_xl.png)
+![alt tag](https://cdn.imgpile.com/f/8HWjSDd_xl.png)
 
 登入註冊頁面
 
@@ -27,6 +27,10 @@ docker-django-chat-room use django-channels 4💬
 聊天畫面
 
 ![alt tag](https://cdn.imgpile.com/f/ZovaTp3_xl.png)
+
+分享位置（使用 [Leaflet](https://leafletjs.com/) 搭配 [OpenStreetMap](https://www.openstreetmap.org/) 圖資）
+
+![alt tag](https://cdn.imgpile.com/f/LQVzIM8_xl.png)
 
 ## 如何執行
 
@@ -63,6 +67,21 @@ docker compose down -v
 成功 `onopen` 時會把延遲重置回 1s；送訊息前以 `readyState === WebSocket.OPEN` 守護，避免重連期間呼叫 `send()` 拋例外。
 
 ### 說明三
+
+聊天室內的「分享位置」按鈕是使用瀏覽器原生的 `navigator.geolocation` API，
+
+該 API 屬於 **Powerful Features**，瀏覽器規定只能在 *secure context* 下執行，也就是：
+
+* `https://` 網址
+* `http://localhost`（或 `127.0.0.1`）
+
+因此，**目前只有透過 [http://localhost:8000/](http://localhost:8000/) 存取時，分享位置功能才會正常運作**。
+
+如果你改用區網 IP（例如 `http://192.168.x.x:8000`）開啟，瀏覽器會直接以權限／安全性為由擋下定位請求。
+
+若需要在區網或正式環境使用，請另外架設 HTTPS
+
+### 說明四
 
 js 中的 `{{ room_name }}` 用法，像是在 django_chat_room/chat/templates/chat/[room.html](https://github.com/twtrubiks/django-chat-room/blob/master/chat/templates/chat/room.html) 中的
 
@@ -110,6 +129,8 @@ connectWebSocket();
 
 * [Django](https://www.djangoproject.com/)
 * [Channels](https://github.com/django/channels)
+* [Leaflet](https://leafletjs.com/)（可參考 [leaflet-tutorials-interesting](https://github.com/twtrubiks/leaflet-tutorials-interesting)）
+* [OpenStreetMap](https://www.openstreetmap.org/)
 
 ## Donation
 

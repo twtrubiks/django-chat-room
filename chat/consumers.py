@@ -38,48 +38,103 @@ class ChatConsumer(WebsocketConsumer):
     # Receive message from WebSocket
     def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        original_message = text_data_json['message']
+        msg_type = text_data_json.get('type', 'text')
         user = str(self.scope['user'])
         now_time = datetime.datetime.now().strftime(settings.DATETIME_FORMAT)
 
-        if not original_message:
-            return
         if not self.scope['user'].is_authenticated:
+            return
+
+        if msg_type == 'location':
+            self._handle_location(text_data_json, user, now_time)
+        else:
+            self._handle_text(text_data_json, user, now_time)
+
+    def _handle_text(self, payload, user, now_time):
+        original_message = payload.get('message', '')
+        if not original_message:
             return
 
         # 對訊息內容進行 HTML 轉義以防止 XSS
         escaped_message = escape(original_message)
 
         try:
-            Message.objects.create(user=self.scope['user'], message=escaped_message, group_name=self.room_group_name)
+            Message.objects.create(
+                user=self.scope['user'],
+                message=escaped_message,
+                group_name=self.room_group_name,
+                message_type=Message.TEXT,
+            )
         except Exception as e:
             logger.error(f"Error saving message to database: {e}")
-            # 根據需要，可以決定是否仍然發送訊息或通知用戶錯誤
-            return # 如果資料庫保存失敗，則不發送訊息
+            return
 
-        # Send message to room group
         try:
             async_to_sync(self.channel_layer.group_send)(
                 self.room_group_name,
                 {
                     'type': 'chat_message',
-                    'message': escaped_message, # 發送轉義後的訊息
+                    'message_type': Message.TEXT,
+                    'message': escaped_message,
                     'user': user,
-                    'now_time': now_time
+                    'now_time': now_time,
                 }
             )
         except Exception as e:
             logger.error(f"Error sending message to group: {e}")
 
+    def _handle_location(self, payload, user, now_time):
+        try:
+            latitude = float(payload['latitude'])
+            longitude = float(payload['longitude'])
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Invalid location payload: %s", payload)
+            return
+
+        if not (-90.0 <= latitude <= 90.0) or not (-180.0 <= longitude <= 180.0):
+            logger.warning("Location out of range: lat=%s lng=%s", latitude, longitude)
+            return
+
+        try:
+            Message.objects.create(
+                user=self.scope['user'],
+                message='',
+                group_name=self.room_group_name,
+                message_type=Message.LOCATION,
+                latitude=latitude,
+                longitude=longitude,
+            )
+        except Exception as e:
+            logger.error(f"Error saving location to database: {e}")
+            return
+
+        try:
+            async_to_sync(self.channel_layer.group_send)(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message_type': Message.LOCATION,
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'user': user,
+                    'now_time': now_time,
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error sending location to group: {e}")
+
     # Receive message from room group
     def chat_message(self, event):
-        # 從事件中獲取的 message 已經是轉義過的
-        message = event['message']
-        now_time = event['now_time']
-        user = event['user']
+        message_type = event.get('message_type', 'text')
+        payload = {
+            'message_type': message_type,
+            'user': event['user'],
+            'now_time': event['now_time'],
+        }
+        if message_type == 'location':
+            payload['latitude'] = event['latitude']
+            payload['longitude'] = event['longitude']
+        else:
+            payload['message'] = event['message']
         # Send message to WebSocket
-        self.send(text_data=json.dumps({
-            'message': message,
-            'user': user,
-            'now_time': now_time,
-        }))
+        self.send(text_data=json.dumps(payload))

@@ -293,10 +293,82 @@ body {
     }
 }
 
+.loc-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    color: #667eea;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.loc-btn:hover:not(:disabled) {
+    transform: scale(1.1);
+    background: white;
+}
+
+.loc-btn:active {
+    transform: scale(0.95);
+}
+
+.loc-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.message-bubble--map {
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.message.own .message-bubble--map {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.location-map {
+    width: 220px;
+    height: 140px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.location-link {
+    display: block;
+    margin-top: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    color: #667eea;
+    text-decoration: none;
+    text-align: right;
+}
+
+.location-link:hover {
+    text-decoration: underline;
+}
+
+.location-alert {
+    margin: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+}
+
 @media (max-width: 480px) {
     .chat-container {
         width: 100%;
         height: 100vh;
         border-radius: 0;
+    }
+
+    .location-map {
+        width: 100%;
+        max-width: 240px;
     }
 }

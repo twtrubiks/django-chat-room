@@ -2,42 +2,40 @@
 {% load static %}
 {% block title %}Chat Room{% endblock %}
 {% block content %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="anonymous">
     <link href="{% static 'stylesheets/chat.css' %}" rel="stylesheet">
     <div class="chat-container">
         <div class="chat-header">
             <div class="header-left">
-                <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                <div class="user-avatar">#</div>
                 <div>
-                    <div class="chat-title">{{ request.user }}</div>
-                    <div class="chat-status">線上</div>
+                    <div class="chat-title">{{ room_name }}</div>
+                    <div class="chat-status">公開聊天室</div>
                 </div>
             </div>
-            <form method="post" action="{% url 'logout' %}" style="display: inline;">
-                {% csrf_token %}
-                <button type="submit" class="logout-btn" style="cursor: pointer;">登出</button>
-            </form>
         </div>
 
         <div class="chat-messages" id="chatMessages">
             {% if user.is_authenticated %}
                 {% for message_item in chat_messages %}
-                    {% if message_item.user == user %}
-                    <div class="message own">
-                        <div class="message-avatar">{{ user.username|first|upper }}</div>
-                        <div class="message-content">
-                            <div class="message-bubble">{{ message_item.message|safe }}</div>
-                            <div class="message-time">{{ message_item.created|date:"H:i" }}</div>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="message">
+                    <div class="message{% if message_item.user == user %} own{% endif %}">
                         <div class="message-avatar">{{ message_item.user.username|first|upper }}</div>
                         <div class="message-content">
-                            <div class="message-bubble">{{ message_item.message|safe }}</div>
+                            {% if message_item.message_type == 'location' %}
+                                <div class="message-bubble message-bubble--map">
+                                    <div class="location-map"
+                                         data-lat="{{ message_item.latitude }}"
+                                         data-lng="{{ message_item.longitude }}"></div>
+                                    <a class="location-link"
+                                       href="https://www.openstreetmap.org/?mlat={{ message_item.latitude }}&mlon={{ message_item.longitude }}#map=15/{{ message_item.latitude }}/{{ message_item.longitude }}"
+                                       target="_blank" rel="noopener">在 OSM 開啟</a>
+                                </div>
+                            {% else %}
+                                <div class="message-bubble">{{ message_item.message|safe }}</div>
+                            {% endif %}
                             <div class="message-time">{{ message_item.created|date:"H:i" }}</div>
                         </div>
                     </div>
-                    {% endif %}
                 {% empty %}
                     <div class="message" style="justify-content: center; color: rgba(255,255,255,0.7); padding: 10px;">No messages yet.</div>
                 {% endfor %}
@@ -57,6 +55,7 @@
         <div class="chat-input">
             <div class="input-container">
                 <textarea class="message-input" id="btn-input" placeholder="輸入訊息..." rows="1"></textarea>
+                <button class="loc-btn" id="btn-loc" title="分享位置" type="button"><i class="fas fa-location-dot"></i></button>
                 <button class="send-btn" id="btn-chat">➤</button>
             </div>
         </div>
@@ -64,14 +63,55 @@
 {% endblock %}
 
 {% block js %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin="anonymous"></script>
 <script>
+    function renderLocationMessage(container, lat, lng, accuracy) {
+        var map = L.map(container, {
+            zoomControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            touchZoom: false,
+            attributionControl: true,
+        }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+            maxZoom: 19
+        }).addTo(map);
+        L.marker([lat, lng]).addTo(map);
+        if (accuracy && accuracy > 0) {
+            L.circle([lat, lng], { radius: accuracy, color: '#667eea', weight: 1, fillOpacity: 0.15 }).addTo(map);
+        }
+        return map;
+    }
+
+    function showLocationAlert(text) {
+        var $alert = $('<div class="alert alert-warning location-alert" role="alert"></div>').text(text);
+        $('#chatMessages').prepend($alert);
+        setTimeout(function() { $alert.fadeOut(300, function() { $(this).remove(); }); }, 3000);
+    }
+
     $(document).ready(function() {
-        const chatMessagesContainer = $('#chatMessages');
+        var chatMessagesContainer = $('#chatMessages');
         if (chatMessagesContainer.length) {
-            // Scroll to bottom after initial messages are loaded
             chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
         }
+        // Initialize maps in server-rendered history
+        $('.location-map').each(function() {
+            var lat = parseFloat($(this).data('lat'));
+            var lng = parseFloat($(this).data('lng'));
+            if (!isNaN(lat) && !isNaN(lng)) {
+                renderLocationMessage(this, lat, lng, null);
+            }
+        });
+        // Hide location button if geolocation not supported
+        if (!('geolocation' in navigator)) {
+            $('#btn-loc').hide();
+        }
     });
+
     var room_name = '{{ room_name }}';
     var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
     var websocket_str = ws_scheme + '://' + window.location.host + '/ws/chat/' + room_name + '/';
@@ -90,41 +130,53 @@
 
         chatSocket.onmessage = function (e) {
             var data = JSON.parse(e.data);
-            var messageText = data['message'];
+            var messageType = data['message_type'] || 'text';
             var now_time = data['now_time'];
             var receive_user = data['user'];
             var currentUser = "{{user}}";
             var chatMessagesContainer = $('#chatMessages');
-            var messageHtml = '';
+            var ownClass = (receive_user === currentUser) ? ' own' : '';
+            var avatarLetter = receive_user.charAt(0).toUpperCase();
 
             // Remove "No messages yet" or "Please Login" placeholder if present
             chatMessagesContainer.find('.message[style*="justify-content: center"]').remove();
 
-            if (receive_user === currentUser) {
-                messageHtml = `
-                <div class="message own">
-                    <div class="message-avatar">${currentUser.charAt(0).toUpperCase()}</div>
-                    <div class="message-content">
-                        <div class="message-bubble">${messageText}</div>
-                        <div class="message-time">${now_time}</div>
-                    </div>
-                </div>`;
+            var bubbleHtml;
+            if (messageType === 'location') {
+                var lat = parseFloat(data['latitude']);
+                var lng = parseFloat(data['longitude']);
+                var osmUrl = 'https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=15/' + lat + '/' + lng;
+                bubbleHtml = `
+                    <div class="message-bubble message-bubble--map">
+                        <div class="location-map" data-lat="${lat}" data-lng="${lng}"></div>
+                        <a class="location-link" href="${osmUrl}" target="_blank" rel="noopener">在 OSM 開啟</a>
+                    </div>`;
             } else {
-                messageHtml = `
-                <div class="message">
-                    <div class="message-avatar">${receive_user.charAt(0).toUpperCase()}</div>
-                    <div class="message-content">
-                        <div class="message-bubble">${messageText}</div>
-                        <div class="message-time">${now_time}</div>
-                    </div>
-                </div>`;
+                bubbleHtml = `<div class="message-bubble">${data['message']}</div>`;
             }
 
+            var messageHtml = `
+            <div class="message${ownClass}">
+                <div class="message-avatar">${avatarLetter}</div>
+                <div class="message-content">
+                    ${bubbleHtml}
+                    <div class="message-time">${now_time}</div>
+                </div>
+            </div>`;
+
+            var $node = $(messageHtml);
             var typingIndicator = chatMessagesContainer.find('#typingIndicator');
             if (typingIndicator.length > 0) {
-                $(messageHtml).insertBefore(typingIndicator);
+                $node.insertBefore(typingIndicator);
             } else {
-                $(messageHtml).appendTo(chatMessagesContainer);
+                $node.appendTo(chatMessagesContainer);
+            }
+
+            if (messageType === 'location') {
+                var mapEl = $node.find('.location-map')[0];
+                if (mapEl) {
+                    renderLocationMessage(mapEl, parseFloat(data['latitude']), parseFloat(data['longitude']), null);
+                }
             }
 
             chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
@@ -154,10 +206,46 @@
       var message = $('#btn-input').val();
       if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
+                'type': 'text',
                 'message': message
           }));
           $('#btn-input').val('');
       }
+    });
+
+    // 注意：navigator.geolocation 需要 secure context（HTTPS 或 localhost）才能使用，
+    // 透過區網 IP（例如 http://192.168.x.x:8000）存取時會被瀏覽器以權限/安全性為由擋下。
+    // 開發測試請改用 http://localhost:8000/，正式部署請使用 HTTPS。
+    $("#btn-loc").click(function() {
+        if (!('geolocation' in navigator)) {
+            showLocationAlert('您的瀏覽器不支援定位功能。');
+            return;
+        }
+        if (!confirm('將分享您目前的位置給此聊天室成員，繼續？')) {
+            return;
+        }
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+        navigator.geolocation.getCurrentPosition(function(position) {
+            $btn.prop('disabled', false);
+            if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+                chatSocket.send(JSON.stringify({
+                    'type': 'location',
+                    'latitude': position.coords.latitude,
+                    'longitude': position.coords.longitude
+                }));
+            } else {
+                showLocationAlert('連線中斷，請稍後再試。');
+            }
+        }, function(err) {
+            $btn.prop('disabled', false);
+            var msg = '無法取得位置：';
+            if (err.code === err.PERMISSION_DENIED) msg += '已拒絕授權。';
+            else if (err.code === err.POSITION_UNAVAILABLE) msg += '裝置無法定位。';
+            else if (err.code === err.TIMEOUT) msg += '逾時。';
+            else msg += err.message;
+            showLocationAlert(msg);
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     });
 </script>
 {% endblock %}
