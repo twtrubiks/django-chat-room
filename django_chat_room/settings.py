@@ -150,8 +150,12 @@ LOGIN_URL = reverse_lazy('login')
 # Project-specific settings
 DATETIME_FORMAT = '%H:%M'
 
-# MediaMTX webhook 共享 secret，防止偽造開播 / 關播通知
+# MediaMTX webhook 共享 secret，防止偽造開播 / 關播通知（走 POST body，不進 log）
 LIVE_HOOK_SECRET = os.environ.get('LIVE_HOOK_SECRET', 'dev-live-hook-secret')
+
+# /live/auth/ 共享 secret。與 hook 分開：auth secret 只能走 URL query
+# （MediaMTX 限制），必然出現在 server log，故其權限須與 hook 隔離
+LIVE_AUTH_SECRET = os.environ.get('LIVE_AUTH_SECRET', 'dev-live-auth-secret')
 
 # MediaMTX API 位址（compose 內網），reconciler 對帳 is_live 用
 MEDIAMTX_API_URL = os.environ.get('MEDIAMTX_API_URL', 'http://mediamtx:9997')

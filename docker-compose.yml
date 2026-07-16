@@ -19,6 +19,7 @@ services:
         - .:/django_chat_room
       environment:
         - LIVE_HOOK_SECRET=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
+        - LIVE_AUTH_SECRET=${LIVE_AUTH_SECRET:-dev-live-auth-secret}
       depends_on:
         - redis
 
@@ -49,7 +50,8 @@ services:
       environment:
         - LIVE_HOOK_SECRET=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
         # 覆蓋 mediamtx.yml 的 authHTTPAddress，帶上 secret（設定值無法 shell 展開，只能在此組 URL）
-        - MTX_AUTHHTTPADDRESS=http://app:8000/live/auth/?secret=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
+        # 注意用 AUTH secret 而非 HOOK secret：URL query 會進 server log，兩者權限須隔離
+        - MTX_AUTHHTTPADDRESS=http://app:8000/live/auth/?secret=${LIVE_AUTH_SECRET:-dev-live-auth-secret}
       volumes:
         - ./mediamtx.yml:/mediamtx.yml
 

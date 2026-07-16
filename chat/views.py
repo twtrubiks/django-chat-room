@@ -10,6 +10,7 @@ from django.core import signing
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.utils.crypto import constant_time_compare
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -107,7 +108,7 @@ def stream_auth(request):
     """
     # 只接受帶共享 secret 的請求（MediaMTX 端由 MTX_AUTHHTTPADDRESS 附上），
     # 否則此端點會成為公開的金鑰驗證 oracle
-    if request.GET.get('secret') != settings.LIVE_HOOK_SECRET:
+    if not constant_time_compare(request.GET.get('secret', ''), settings.LIVE_AUTH_SECRET):
         return HttpResponse(status=403)
 
     try:
@@ -154,7 +155,7 @@ def stream_hook(request):
     MediaMTX runOnReady / runOnNotReady 開播、關播通知，
     更新 Room.is_live 並廣播到聊天室。以共享 secret 驗證來源。
     """
-    if request.POST.get('secret') != settings.LIVE_HOOK_SECRET:
+    if not constant_time_compare(request.POST.get('secret', ''), settings.LIVE_HOOK_SECRET):
         return HttpResponse(status=403)
 
     room = Room.objects.filter(name=request.POST.get('path', '')).first()
