@@ -1,11 +1,10 @@
-import datetime
 import json
 import logging # 新增 logging 模組
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from django.conf import settings
-from django.utils.html import escape # 新增 escape 函數
+from django.utils import timezone
 
 from .models import Message
 
@@ -17,16 +16,17 @@ class ChatConsumer(WebsocketConsumer):
     def connect(self):
         self.room_group_name = self.scope['url_route']['kwargs']['room_name']
 
+        # 先驗證身份，未認證的連線不加入群組
+        if self.scope["user"].is_anonymous:
+            self.close()
+            return
+
         # Join room group
         async_to_sync(self.channel_layer.group_add)(
             self.room_group_name,
             self.channel_name
         )
-
-        if self.scope["user"].is_anonymous:
-            self.close()
-        else:
-            self.accept()
+        self.accept()
 
     def disconnect(self, close_code):
         # Leave room group
@@ -40,7 +40,9 @@ class ChatConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         msg_type = text_data_json.get('type', 'text')
         user = str(self.scope['user'])
-        now_time = datetime.datetime.now().strftime(settings.DATETIME_FORMAT)
+        # localtime() 回傳 TIME_ZONE 的 aware 時間，
+        # 與歷史訊息（created 經模板轉時區）顯示一致
+        now_time = timezone.localtime().strftime(settings.DATETIME_FORMAT)
 
         if not self.scope['user'].is_authenticated:
             return
@@ -51,17 +53,16 @@ class ChatConsumer(WebsocketConsumer):
             self._handle_text(text_data_json, user, now_time)
 
     def _handle_text(self, payload, user, now_time):
-        original_message = payload.get('message', '')
-        if not original_message:
+        message = payload.get('message', '')
+        if not message:
             return
 
-        # 對訊息內容進行 HTML 轉義以防止 XSS
-        escaped_message = escape(original_message)
-
+        # 存原文，XSS 防禦交給輸出端：
+        # 歷史訊息由模板自動轉義、即時訊息由前端以 .text() 插入
         try:
             Message.objects.create(
                 user=self.scope['user'],
-                message=escaped_message,
+                message=message,
                 group_name=self.room_group_name,
                 message_type=Message.TEXT,
             )
@@ -75,7 +76,7 @@ class ChatConsumer(WebsocketConsumer):
                 {
                     'type': 'chat_message',
                     'message_type': Message.TEXT,
-                    'message': escaped_message,
+                    'message': message,
                     'user': user,
                     'now_time': now_time,
                 }

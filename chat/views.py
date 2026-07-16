@@ -75,7 +75,10 @@ def regenerate_stream_key(request, room_name):
 
 
 def room(request, room_name):
-    chat_messages = Message.objects.filter(group_name=room_name).order_by("created")[:100]
+    # 取最新 100 筆再反轉，維持由舊到新的顯示順序
+    chat_messages = list(reversed(
+        Message.objects.filter(group_name=room_name).order_by("-created")[:100]
+    ))
     # 有註冊 Room 的房名才有直播功能，否則維持純聊天室。
     # is_live 的對帳只由 reconciler 服務負責（30 秒收斂並廣播）：
     # 在這裡同步對帳除了阻塞頁面，還會靜默改掉 DB 使 reconciler

@@ -73,7 +73,7 @@
                                        target="_blank" rel="noopener">在 OSM 開啟</a>
                                 </div>
                             {% else %}
-                                <div class="message-bubble">{{ message_item.message|safe }}</div>
+                                <div class="message-bubble">{{ message_item.message }}</div>
                             {% endif %}
                             <div class="message-time">{{ message_item.created|date:"H:i" }}</div>
                         </div>
@@ -208,7 +208,8 @@
                         <a class="location-link" href="${osmUrl}" target="_blank" rel="noopener">在 OSM 開啟</a>
                     </div>`;
             } else {
-                bubbleHtml = `<div class="message-bubble">${data['message']}</div>`;
+                // 訊息內容改以 .text() 插入（見下方），防止 XSS
+                bubbleHtml = `<div class="message-bubble"></div>`;
             }
 
             var messageHtml = `
@@ -221,6 +222,9 @@
             </div>`;
 
             var $node = $(messageHtml);
+            if (messageType !== 'location') {
+                $node.find('.message-bubble').text(data['message']);
+            }
             var typingIndicator = chatMessagesContainer.find('#typingIndicator');
             if (typingIndicator.length > 0) {
                 $node.insertBefore(typingIndicator);
