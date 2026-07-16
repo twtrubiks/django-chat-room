@@ -145,6 +145,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # LOGIN settings
 LOGIN_REDIRECT_URL = reverse_lazy('chat')
+LOGIN_URL = reverse_lazy('login')
 
 # Project-specific settings
 DATETIME_FORMAT = '%H:%M'

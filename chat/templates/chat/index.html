@@ -2,6 +2,36 @@
 {% block title %}Chat{% endblock %}
 {% block content %}
 <div style="padding-top: 70px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">直播間</h4>
+        <a class="btn btn-primary" href="{% url 'create_room' %}">開設直播間</a>
+    </div>
+    {% if live_rooms %}
+        <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+            {% for live_room in live_rooms %}
+                <div class="col">
+                    <a class="card text-decoration-none h-100" href="{% url 'room' live_room.name %}">
+                        <div class="card-body">
+                            <h5 class="card-title d-flex justify-content-between align-items-center">
+                                {{ live_room.name }}
+                                {% if live_room.is_live %}
+                                    <span class="badge bg-danger">LIVE</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">離線</span>
+                                {% endif %}
+                            </h5>
+                            <p class="card-text text-muted mb-0">主播：{{ live_room.owner.username }}</p>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted mb-4">目前還沒有直播間，開一個吧！</p>
+    {% endif %}
+
+    <hr>
+
     <div class="form-group">
         <label for="room-name-input">What chat room would you like to enter?</label>
         <input type="text" class="form-control" id="room-name-input">

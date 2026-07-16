@@ -7,11 +7,13 @@ from urllib.parse import parse_qs
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .forms import RoomCreateForm
 from .models import Message, Room
 
 
@@ -19,7 +21,25 @@ from .models import Message, Room
 
 def index(request):
     uid4 = uuid.uuid4().hex
-    return render(request, 'chat/index.html', {'uid4': uid4})
+    live_rooms = Room.objects.select_related('owner').order_by('-is_live', '-created')
+    return render(request, 'chat/index.html', {
+        'uid4': uid4,
+        'live_rooms': live_rooms,
+    })
+
+
+@login_required
+def create_room(request):
+    if request.method == 'POST':
+        form = RoomCreateForm(request.POST)
+        if form.is_valid():
+            live_room = form.save(commit=False)
+            live_room.owner = request.user
+            live_room.save()
+            return redirect('room', room_name=live_room.name)
+    else:
+        form = RoomCreateForm()
+    return render(request, 'chat/create_room.html', {'form': form})
 
 
 def _query_mediamtx_is_live(name):

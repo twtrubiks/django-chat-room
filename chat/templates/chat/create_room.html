@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}Create a Live Room{% endblock %}
+{% block content %}
+    <div class="p-5 mb-4 bg-light rounded-3" style="margin-top: 70px;">
+        <div class="container-fluid py-5">
+            <h1 class="display-5 fw-bold">開設直播間</h1>
+            <p class="col-md-8 fs-4">建立後你就是房主，可以取得推流金鑰開始直播</p>
+        </div>
+    </div>
+
+    <form action="." method="post" class="form">
+        {% csrf_token %}
+        {% bootstrap_form form layout='vertical' %}
+        <button type="submit" class="btn btn-primary mt-3">
+            建立直播間
+        </button>
+    </form>
+{% endblock %}
