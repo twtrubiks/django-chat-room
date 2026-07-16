@@ -1,6 +1,9 @@
 import json
 import uuid
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -47,3 +50,28 @@ def stream_auth(request):
     if room and data.get('password') == room.stream_key:
         return HttpResponse(status=200)
     return HttpResponse(status=401)
+
+
+@csrf_exempt
+@require_POST
+def stream_hook(request):
+    """
+    MediaMTX runOnReady / runOnNotReady 開播、關播通知，
+    更新 Room.is_live 並廣播到聊天室。以共享 secret 驗證來源。
+    """
+    if request.POST.get('secret') != settings.LIVE_HOOK_SECRET:
+        return HttpResponse(status=403)
+
+    room = Room.objects.filter(name=request.POST.get('path', '')).first()
+    if room is None:
+        # 未註冊 Room 的房名沒有直播功能，忽略
+        return HttpResponse(status=200)
+
+    room.is_live = request.POST.get('event') == 'ready'
+    room.save(update_fields=['is_live'])
+
+    async_to_sync(get_channel_layer().group_send)(
+        room.name,
+        {'type': 'stream_status', 'is_live': room.is_live},
+    )
+    return HttpResponse(status=200)

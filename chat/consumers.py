@@ -123,6 +123,13 @@ class ChatConsumer(WebsocketConsumer):
         except Exception as e:
             logger.error(f"Error sending location to group: {e}")
 
+    # Receive stream status from live hook (via group_send)
+    def stream_status(self, event):
+        self.send(text_data=json.dumps({
+            'message_type': 'stream_status',
+            'is_live': event['is_live'],
+        }))
+
     # Receive message from room group
     def chat_message(self, event):
         message_type = event.get('message_type', 'text')

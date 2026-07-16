@@ -16,3 +16,7 @@ authHTTPAddress: http://app:8000/live/auth/
 
 paths:
   all_others:
+    # 開播 / 關播時通知 Django（runOnReady 是執行命令，Alpine image 只有 wget 沒有 curl）
+    # $MTX_PATH / $LIVE_HOOK_SECRET 由容器內 shell 展開
+    runOnReady: wget -q -O- --post-data="path=$MTX_PATH&event=ready&secret=$LIVE_HOOK_SECRET" http://app:8000/live/hook/
+    runOnNotReady: wget -q -O- --post-data="path=$MTX_PATH&event=notready&secret=$LIVE_HOOK_SECRET" http://app:8000/live/hook/

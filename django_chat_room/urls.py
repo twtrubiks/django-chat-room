@@ -23,4 +23,5 @@ urlpatterns = [
     path('account/', include('account.urls')),
     path('chat/', include('chat.urls')),
     path('live/auth/', chat_views.stream_auth, name='stream_auth'),
+    path('live/hook/', chat_views.stream_hook, name='stream_hook'),
 ]

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from django.urls import reverse_lazy
 
@@ -144,3 +145,6 @@ LOGIN_REDIRECT_URL = reverse_lazy('chat')
 
 # Project-specific settings
 DATETIME_FORMAT = '%H:%M'
+
+# MediaMTX webhook 共享 secret，防止偽造開播 / 關播通知
+LIVE_HOOK_SECRET = os.environ.get('LIVE_HOOK_SECRET', 'dev-live-hook-secret')

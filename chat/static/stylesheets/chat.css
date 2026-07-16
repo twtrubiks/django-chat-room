@@ -444,6 +444,13 @@ body {
     font-weight: 600;
 }
 
+.live-notice {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    padding: 4px 0;
+}
+
 @media (max-width: 480px) {
     .chat-container {
         width: 100%;

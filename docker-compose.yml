@@ -17,6 +17,8 @@ services:
         - "8000:8000"
       volumes:
         - .:/django_chat_room
+      environment:
+        - LIVE_HOOK_SECRET=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
       depends_on:
         - redis
 
@@ -31,6 +33,8 @@ services:
         - "8888:8888"     # HLS 播放
         - "8889:8889"     # WebRTC 播放 / WHIP 推流
         - "8189:8189/udp" # WebRTC ICE（必要）
+      environment:
+        - LIVE_HOOK_SECRET=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
       volumes:
         - ./mediamtx.yml:/mediamtx.yml
 

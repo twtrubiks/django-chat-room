@@ -152,6 +152,19 @@
             var receive_user = data['user'];
             var currentUser = "{{user}}";
             var chatMessagesContainer = $('#chatMessages');
+
+            // 開播 / 關播通知（由 MediaMTX webhook 廣播）
+            if (messageType === 'stream_status') {
+                var $notice = $('<div class="live-notice"></div>')
+                    .text(data['is_live'] ? '🔴 主播開播了' : '直播已結束');
+                chatMessagesContainer.append($notice);
+                chatMessagesContainer.scrollTop(chatMessagesContainer[0].scrollHeight);
+                if (typeof setLiveState === 'function') {
+                    setLiveState(data['is_live']);
+                }
+                return;
+            }
+
             var ownClass = (receive_user === currentUser) ? ' own' : '';
             var avatarLetter = receive_user.charAt(0).toUpperCase();
 
