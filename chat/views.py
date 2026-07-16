@@ -1,5 +1,6 @@
 import json
 import uuid
+from urllib.parse import parse_qs
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -23,10 +24,16 @@ def room(request, room_name):
     chat_messages = Message.objects.filter(group_name=room_name).order_by("created")[:100]
     # 有註冊 Room 的房名才有直播功能，否則維持純聊天室
     live_room = Room.objects.filter(name=room_name).first()
+    is_owner = (
+        live_room is not None
+        and request.user.is_authenticated
+        and live_room.owner_id == request.user.id
+    )
     return render(request, 'chat/room.html', {
         'chat_messages': chat_messages,
         'room_name': room_name,
         'live_room': live_room,
+        'is_owner': is_owner,
     })
 
 
@@ -35,7 +42,7 @@ def room(request, room_name):
 def stream_auth(request):
     """
     MediaMTX authHTTPAddress 委派認證端點，回應 20x 放行、其他拒絕。
-    推流帳密要用 query string（?user=&pass=），不能用 URL userinfo。
+    RTMP 推流帳密要用 query string（?user=&pass=），不能用 URL userinfo。
     """
     try:
         data = json.loads(request.body)
@@ -46,8 +53,16 @@ def stream_auth(request):
     if data.get('action') != 'publish':
         return HttpResponse(status=200)
 
+    # RTMP 的 query string 帳密會被 MediaMTX 解析進 password 欄位，
+    # 但 WHIP（WebRTC 推流）只會原封放在 query 欄位（實測），需自行解析；
+    # WHIP 走 HTTP Basic auth 時則會填入 password 欄位
+    password = data.get('password', '')
+    if not password:
+        query = parse_qs(data.get('query', ''))
+        password = (query.get('pass') or [''])[0]
+
     room = Room.objects.filter(name=data.get('path', '')).first()
-    if room and data.get('password') == room.stream_key:
+    if room and password and password == room.stream_key:
         return HttpResponse(status=200)
     return HttpResponse(status=401)
 

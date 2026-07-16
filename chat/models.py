@@ -1,6 +1,7 @@
 import secrets
 
 from django.contrib.auth.models import User
+from django.core.validators import RegexValidator
 from django.db import models
 
 
@@ -14,7 +15,12 @@ class Room(models.Model):
     未註冊 Room 的房名維持原本純聊天室行為（無直播功能）。
     """
 
-    name = models.SlugField(max_length=64, unique=True)
+    # 排除 slug 預設允許的 '-'，需與 WebSocket routing 的 (?P<room_name>\w+) 相容
+    name = models.SlugField(
+        max_length=64,
+        unique=True,
+        validators=[RegexValidator(r'^\w+$', '房間名稱只能包含字母、數字與底線')],
+    )
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rooms')
     stream_key = models.CharField(max_length=64, default=generate_stream_key)
     is_live = models.BooleanField(default=False)

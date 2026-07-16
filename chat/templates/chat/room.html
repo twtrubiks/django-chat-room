@@ -4,8 +4,8 @@
 {% block content %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="anonymous">
     <link href="{% static 'stylesheets/chat.css' %}" rel="stylesheet">
-    <div class="room-layout{% if live_room %} room-layout--live{% endif %}">
     {% if live_room %}
+    <div class="room-layout">
         <div class="live-section">
             <div class="live-video-wrap">
                 <video id="livePlayer" autoplay playsinline controls muted></video>
@@ -18,6 +18,14 @@
                     <button class="live-proto-btn" id="btnHls" type="button">HLS</button>
                 </span>
             </div>
+            {% if is_owner %}
+            <div class="live-owner-panel">
+                <div class="live-owner-title"><i class="fas fa-video"></i> 主播推流資訊（僅房主可見）</div>
+                <div class="live-owner-row">OBS 伺服器：<code id="rtmpServer"></code></div>
+                <div class="live-owner-row">OBS 串流金鑰：<code id="rtmpKey"></code></div>
+                <a class="live-owner-btn" id="whipPublish" target="_blank" rel="noopener">用瀏覽器開始直播（WHIP）</a>
+            </div>
+            {% endif %}
         </div>
     {% endif %}
     <div class="chat-container">
@@ -76,7 +84,7 @@
             </div>
         </div>
     </div>
-    </div>
+    {% if live_room %}</div>{% endif %}
 {% endblock %}
 
 {% block js %}
@@ -282,7 +290,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js" crossorigin="anonymous"></script>
 <script>
     // ===== 直播播放器（WebRTC WHEP 預設，可切換 HLS）=====
-    var streamIsLive = {{ live_room.is_live|yesno:"true,false" }};
+    var streamIsLive = null;  // null = 尚未初始化
     var mtxBase = window.location.protocol + '//' + window.location.hostname;
     var whepUrl = mtxBase + ':8889/' + room_name + '/whep';
     var hlsUrl = mtxBase + ':8888/' + room_name + '/index.m3u8';
@@ -359,6 +367,8 @@
     }
 
     function setLiveState(isLive) {
+        // 同狀態不重做，避免重複的 ready 事件讓觀眾播放器無謂重建
+        if (isLive === streamIsLive) { return; }
         streamIsLive = isLive;
         $('#liveBadge').toggle(isLive);
         if (isLive) {
@@ -378,7 +388,17 @@
         if (streamIsLive) { startPlayer(); }
     });
 
-    setLiveState(streamIsLive);
+    setLiveState({{ live_room.is_live|yesno:"true,false" }});
+
+    {% if is_owner %}
+    // ===== 主播推流資訊（僅房主渲染） =====
+    // 帳密要用 query string，URL userinfo 寫法（rtmp://user:pass@host）認證會失敗
+    var streamCred = 'user={{ user.username|urlencode }}&pass={{ live_room.stream_key|urlencode }}';
+    $('#rtmpServer').text('rtmp://' + window.location.hostname + ':1935');
+    $('#rtmpKey').text(room_name + '?' + streamCred);
+    // 瀏覽器 WHIP 推流需要 secure context（localhost 或 HTTPS）
+    $('#whipPublish').attr('href', mtxBase + ':8889/' + room_name + '/publish?' + streamCred);
+    {% endif %}
 </script>
 {% endif %}
 {% endblock %}
