@@ -36,7 +36,7 @@
                         <button class="live-owner-btn live-owner-btn--danger" type="submit">重新產生金鑰</button>
                     </form>
                     <form method="post" action="{% url 'delete_room' room_name %}"
-                          onsubmit="return confirm('確定要刪除直播間？此動作無法復原（聊天記錄不會刪除）。');">
+                          onsubmit="return confirm('確定要刪除直播間？此動作無法復原，聊天記錄將一併刪除。');">
                         {% csrf_token %}
                         <button class="live-owner-btn live-owner-btn--danger" type="submit">刪除直播間</button>
                     </form>
@@ -362,6 +362,8 @@
     }
 
     function startHLSPlayer() {
+        // token 只需要放在初始 URL：MediaMTX 驗證後會把 session 與原 query
+        // 傳播進 playlist 內的分段 URL（實測），後續請求不需另外帶 token
         if (window.Hls && Hls.isSupported()) {
             hlsPlayer = new Hls();
             hlsPlayer.loadSource(hlsUrl);

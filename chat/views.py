@@ -8,8 +8,9 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.crypto import constant_time_compare
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -54,11 +55,12 @@ def create_room(request):
 @login_required
 @require_POST
 def delete_room(request, room_name):
-    """刪除直播間（聊天記錄以 group_name 弱關聯，不隨之刪除）"""
-    live_room = Room.objects.filter(name=room_name, owner=request.user).first()
-    if live_room is None:
-        return HttpResponse(status=404)
-    live_room.delete()
+    live_room = get_object_or_404(Room, name=room_name, owner=request.user)
+    with transaction.atomic():
+        live_room.delete()
+        # 聊天記錄一併刪除：房名釋放後可被他人重建，
+        # 留著舊訊息會外洩給新房主與新觀眾
+        Message.objects.filter(group_name=room_name).delete()
     return redirect('chat')
 
 
@@ -66,9 +68,7 @@ def delete_room(request, room_name):
 @require_POST
 def regenerate_stream_key(request, room_name):
     """金鑰外洩時房主可自行輪替，舊金鑰立即失效（下次推流生效）"""
-    live_room = Room.objects.filter(name=room_name, owner=request.user).first()
-    if live_room is None:
-        return HttpResponse(status=404)
+    live_room = get_object_or_404(Room, name=room_name, owner=request.user)
     live_room.stream_key = generate_stream_key()
     live_room.save(update_fields=['stream_key'])
     return redirect('room', room_name=room_name)
