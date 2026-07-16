@@ -10,6 +10,15 @@ webrtcLocalUDPAddress: :8189
 authMethod: http
 authHTTPAddress: http://app:8000/live/auth/
 
+# 播放（read）不設限，直接排除、不委派給 Django，
+# 避免 HLS 每個 segment 請求都繞一趟 Django
+# 注意：自訂此清單會覆蓋預設值，api / metrics / pprof 必須一併列上
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+  - action: read
+
 # 區網其他裝置要觀看時，需加上主機的區網 IP，
 # 否則瀏覽器拿到的 ICE candidate 連不上，例如：
 # webrtcAdditionalHosts: [192.168.1.100]
