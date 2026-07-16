@@ -4,13 +4,29 @@
 {% block content %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="anonymous">
     <link href="{% static 'stylesheets/chat.css' %}" rel="stylesheet">
+    <div class="room-layout{% if live_room %} room-layout--live{% endif %}">
+    {% if live_room %}
+        <div class="live-section">
+            <div class="live-video-wrap">
+                <video id="livePlayer" autoplay playsinline controls muted></video>
+                <div class="live-offline" id="liveOffline">主播尚未開播</div>
+            </div>
+            <div class="live-bar">
+                <span class="live-badge" id="liveBadge">● LIVE</span>
+                <span class="live-proto">
+                    <button class="live-proto-btn active" id="btnWebrtc" type="button">WebRTC</button>
+                    <button class="live-proto-btn" id="btnHls" type="button">HLS</button>
+                </span>
+            </div>
+        </div>
+    {% endif %}
     <div class="chat-container">
         <div class="chat-header">
             <div class="header-left">
                 <div class="user-avatar">#</div>
                 <div>
                     <div class="chat-title">{{ room_name }}</div>
-                    <div class="chat-status">公開聊天室</div>
+                    <div class="chat-status">{% if live_room %}直播間{% else %}公開聊天室{% endif %}</div>
                 </div>
             </div>
         </div>
@@ -59,6 +75,7 @@
                 <button class="send-btn" id="btn-chat">➤</button>
             </div>
         </div>
+    </div>
     </div>
 {% endblock %}
 
@@ -248,4 +265,107 @@
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     });
 </script>
+{% if live_room %}
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js" crossorigin="anonymous"></script>
+<script>
+    // ===== 直播播放器（WebRTC WHEP 預設，可切換 HLS）=====
+    var streamIsLive = {{ live_room.is_live|yesno:"true,false" }};
+    var mtxBase = window.location.protocol + '//' + window.location.hostname;
+    var whepUrl = mtxBase + ':8889/' + room_name + '/whep';
+    var hlsUrl = mtxBase + ':8888/' + room_name + '/index.m3u8';
+
+    var livePlayer = document.getElementById('livePlayer');
+    var playerProto = 'webrtc';
+    var whepPc = null;
+    var hlsPlayer = null;
+
+    function stopPlayer() {
+        if (whepPc) { whepPc.close(); whepPc = null; }
+        if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+        livePlayer.srcObject = null;
+        livePlayer.removeAttribute('src');
+        livePlayer.load();
+    }
+
+    function showOffline(text) {
+        $('#liveOffline').text(text).show();
+    }
+
+    // 等待 ICE 蒐集完成再送 offer（不使用 trickle ICE，簡化流程）
+    function waitIceComplete(pc) {
+        return new Promise(function (resolve) {
+            if (pc.iceGatheringState === 'complete') { resolve(); return; }
+            var timer = setTimeout(resolve, 1000);
+            pc.addEventListener('icegatheringstatechange', function () {
+                if (pc.iceGatheringState === 'complete') { clearTimeout(timer); resolve(); }
+            });
+        });
+    }
+
+    async function startWebRTCPlayer() {
+        whepPc = new RTCPeerConnection();
+        whepPc.addTransceiver('video', { direction: 'recvonly' });
+        whepPc.addTransceiver('audio', { direction: 'recvonly' });
+        whepPc.ontrack = function (evt) { livePlayer.srcObject = evt.streams[0]; };
+        var offer = await whepPc.createOffer();
+        await whepPc.setLocalDescription(offer);
+        await waitIceComplete(whepPc);
+        var res = await fetch(whepUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/sdp' },
+            body: whepPc.localDescription.sdp
+        });
+        if (!res.ok) { throw new Error('WHEP request failed: ' + res.status); }
+        var answer = await res.text();
+        await whepPc.setRemoteDescription({ type: 'answer', sdp: answer });
+    }
+
+    function startHLSPlayer() {
+        if (window.Hls && Hls.isSupported()) {
+            hlsPlayer = new Hls();
+            hlsPlayer.loadSource(hlsUrl);
+            hlsPlayer.attachMedia(livePlayer);
+        } else if (livePlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            livePlayer.src = hlsUrl;
+        } else {
+            showOffline('此瀏覽器不支援 HLS 播放');
+        }
+    }
+
+    function startPlayer() {
+        stopPlayer();
+        $('#liveOffline').hide();
+        if (playerProto === 'webrtc') {
+            startWebRTCPlayer().catch(function (err) {
+                console.error('WebRTC player error:', err);
+                showOffline('WebRTC 連線失敗，可改試 HLS');
+            });
+        } else {
+            startHLSPlayer();
+        }
+    }
+
+    function setLiveState(isLive) {
+        streamIsLive = isLive;
+        $('#liveBadge').toggle(isLive);
+        if (isLive) {
+            startPlayer();
+        } else {
+            stopPlayer();
+            showOffline('主播尚未開播');
+        }
+    }
+
+    $('.live-proto-btn').click(function () {
+        var proto = this.id === 'btnHls' ? 'hls' : 'webrtc';
+        if (proto === playerProto) { return; }
+        playerProto = proto;
+        $('.live-proto-btn').removeClass('active');
+        $(this).addClass('active');
+        if (streamIsLive) { startPlayer(); }
+    });
+
+    setLiveState(streamIsLive);
+</script>
+{% endif %}
 {% endblock %}
