@@ -5,6 +5,11 @@
 # WebRTC 媒體流量走 UDP 8189（docker-compose 需映射 8189/udp）
 webrtcLocalUDPAddress: :8189
 
+# 認證委派給 Django（回應 20x 放行、其他拒絕）
+# 推流帳密要用 query string（?user=&pass=），URL userinfo 寫法會收到空字串
+authMethod: http
+authHTTPAddress: http://app:8000/live/auth/
+
 # 區網其他裝置要觀看時，需加上主機的區網 IP，
 # 否則瀏覽器拿到的 ICE candidate 連不上，例如：
 # webrtcAdditionalHosts: [192.168.1.100]

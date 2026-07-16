@@ -16,8 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from chat import views as chat_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/', include('account.urls')),
     path('chat/', include('chat.urls')),
+    path('live/auth/', chat_views.stream_auth, name='stream_auth'),
 ]

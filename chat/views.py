@@ -1,6 +1,10 @@
+import json
 import uuid
 
+from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .models import Message, Room
 
@@ -21,3 +25,25 @@ def room(request, room_name):
         'room_name': room_name,
         'live_room': live_room,
     })
+
+
+@csrf_exempt
+@require_POST
+def stream_auth(request):
+    """
+    MediaMTX authHTTPAddress 委派認證端點，回應 20x 放行、其他拒絕。
+    推流帳密要用 query string（?user=&pass=），不能用 URL userinfo。
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    # 只限制推流，播放不設限
+    if data.get('action') != 'publish':
+        return HttpResponse(status=200)
+
+    room = Room.objects.filter(name=data.get('path', '')).first()
+    if room and data.get('password') == room.stream_key:
+        return HttpResponse(status=200)
+    return HttpResponse(status=401)
