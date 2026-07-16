@@ -23,7 +23,14 @@
                 <div class="live-owner-title"><i class="fas fa-video"></i> 主播推流資訊（僅房主可見）</div>
                 <div class="live-owner-row">OBS 伺服器：<code id="rtmpServer"></code></div>
                 <div class="live-owner-row">OBS 串流金鑰：<code id="rtmpKey"></code></div>
-                <a class="live-owner-btn" id="whipPublish" target="_blank" rel="noopener">用瀏覽器開始直播（WHIP）</a>
+                <div class="live-owner-actions">
+                    <a class="live-owner-btn" id="whipPublish" target="_blank" rel="noopener">用瀏覽器開始直播（WHIP）</a>
+                    <form method="post" action="{% url 'regenerate_stream_key' room_name %}"
+                          onsubmit="return confirm('確定要重新產生金鑰？舊金鑰將立即失效，OBS / WHIP 需更新設定。');">
+                        {% csrf_token %}
+                        <button class="live-owner-btn live-owner-btn--danger" type="submit">重新產生金鑰</button>
+                    </form>
+                </div>
             </div>
             {% endif %}
         </div>

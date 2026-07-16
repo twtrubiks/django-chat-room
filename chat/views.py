@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .forms import RoomCreateForm
-from .models import Message, Room
+from .models import Message, Room, generate_stream_key
 
 
 # Create your views here.
@@ -40,6 +40,18 @@ def create_room(request):
     else:
         form = RoomCreateForm()
     return render(request, 'chat/create_room.html', {'form': form})
+
+
+@login_required
+@require_POST
+def regenerate_stream_key(request, room_name):
+    """金鑰外洩時房主可自行輪替，舊金鑰立即失效（下次推流生效）"""
+    live_room = Room.objects.filter(name=room_name, owner=request.user).first()
+    if live_room is None:
+        return HttpResponse(status=404)
+    live_room.stream_key = generate_stream_key()
+    live_room.save(update_fields=['stream_key'])
+    return redirect('room', room_name=room_name)
 
 
 def _query_mediamtx_is_live(name):
