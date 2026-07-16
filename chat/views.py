@@ -1,4 +1,6 @@
 import json
+import urllib.error
+import urllib.request
 import uuid
 from urllib.parse import parse_qs
 
@@ -20,10 +22,34 @@ def index(request):
     return render(request, 'chat/index.html', {'uid4': uid4})
 
 
+def _query_mediamtx_is_live(name):
+    """
+    向 MediaMTX API 查詢串流實際狀態，回傳 True / False；
+    API 連不上（狀態未知）回 None。
+    """
+    url = f'{settings.MEDIAMTX_API_URL}/v3/paths/get/{name}'
+    try:
+        with urllib.request.urlopen(url, timeout=2) as resp:
+            return json.load(resp).get('ready', False)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False  # path 不存在 = 未開播
+        return None
+    except (OSError, ValueError):
+        return None
+
+
 def room(request, room_name):
     chat_messages = Message.objects.filter(group_name=room_name).order_by("created")[:100]
     # 有註冊 Room 的房名才有直播功能，否則維持純聊天室
     live_room = Room.objects.filter(name=room_name).first()
+    if live_room is not None:
+        # 開頁時與 MediaMTX 實際狀態對帳：webhook 是一次性通知，
+        # 若遺失（如 MediaMTX 崩潰）is_live 會永遠卡住，靠這裡收斂
+        actual_is_live = _query_mediamtx_is_live(live_room.name)
+        if actual_is_live is not None and actual_is_live != live_room.is_live:
+            live_room.is_live = actual_is_live
+            live_room.save(update_fields=['is_live'])
     is_owner = (
         live_room is not None
         and request.user.is_authenticated

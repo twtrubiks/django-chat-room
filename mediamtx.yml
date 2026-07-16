@@ -5,6 +5,10 @@
 # WebRTC 媒體流量走 UDP 8189（docker-compose 需映射 8189/udp）
 webrtcLocalUDPAddress: :8189
 
+# MediaMTX API（:9997），Django 用來對帳 is_live 實際狀態；
+# 只在 compose 內網使用，docker-compose 不對外映射此埠
+api: yes
+
 # 認證委派給 Django（回應 20x 放行、其他拒絕）
 # 推流帳密要用 query string（?user=&pass=），URL userinfo 寫法會收到空字串
 authMethod: http
