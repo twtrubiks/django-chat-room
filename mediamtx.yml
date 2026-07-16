@@ -1,0 +1,13 @@
+# MediaMTX 設定檔
+# 完整預設值參考 https://github.com/bluenviron/mediamtx/blob/main/mediamtx.yml
+# 未列出的設定皆使用預設值（RTMP :1935 / HLS :8888 / WebRTC :8889）
+
+# WebRTC 媒體流量走 UDP 8189（docker-compose 需映射 8189/udp）
+webrtcLocalUDPAddress: :8189
+
+# 區網其他裝置要觀看時，需加上主機的區網 IP，
+# 否則瀏覽器拿到的 ICE candidate 連不上，例如：
+# webrtcAdditionalHosts: [192.168.1.100]
+
+paths:
+  all_others:

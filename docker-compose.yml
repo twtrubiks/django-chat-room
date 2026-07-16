@@ -20,5 +20,19 @@ services:
       depends_on:
         - redis
 
+    mediamtx:
+      # 注意：必須用 1-ffmpeg（Alpine base，有 sh / wget），
+      # 官方 :1 是 scratch-based，runOnReady 會因找不到執行檔而失敗
+      container_name: mediamtx
+      image: bluenviron/mediamtx:1-ffmpeg
+      restart: always
+      ports:
+        - "1935:1935"     # RTMP 推流
+        - "8888:8888"     # HLS 播放
+        - "8889:8889"     # WebRTC 播放 / WHIP 推流
+        - "8189:8189/udp" # WebRTC ICE（必要）
+      volumes:
+        - ./mediamtx.yml:/mediamtx.yml
+
 volumes:
     redis-data:
