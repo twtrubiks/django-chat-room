@@ -22,6 +22,19 @@ services:
       depends_on:
         - redis
 
+    reconciler:
+      build: .
+      # 跳過 entrypoint 的 migrate（app 服務已負責），避免兩服務同時 migrate 撞 SQLite 鎖
+      entrypoint: []
+      command: bash -c "python manage.py reconcile_live --loop 30"
+      restart: always
+      volumes:
+        - .:/django_chat_room
+      depends_on:
+        - redis
+        - app
+        - mediamtx
+
     mediamtx:
       # 注意：必須用 1-ffmpeg（Alpine base，有 sh / wget），
       # 官方 :1 是 scratch-based，runOnReady 會因找不到執行檔而失敗
