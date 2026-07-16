@@ -9,6 +9,7 @@ from channels.layers import get_channel_layer
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import signing
+from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -26,7 +27,8 @@ READ_TOKEN_MAX_AGE = 12 * 3600
 
 def index(request):
     uid4 = uuid.uuid4().hex
-    live_rooms = Room.objects.select_related('owner').order_by('-is_live', '-created')
+    rooms_qs = Room.objects.select_related('owner').order_by('-is_live', '-created')
+    live_rooms = Paginator(rooms_qs, 12).get_page(request.GET.get('page'))
     return render(request, 'chat/index.html', {
         'uid4': uid4,
         'live_rooms': live_rooms,
@@ -38,13 +40,27 @@ def create_room(request):
     if request.method == 'POST':
         form = RoomCreateForm(request.POST)
         if form.is_valid():
-            live_room = form.save(commit=False)
-            live_room.owner = request.user
-            live_room.save()
-            return redirect('room', room_name=live_room.name)
+            if request.user.rooms.count() >= settings.MAX_LIVE_ROOMS_PER_USER:
+                form.add_error(None, f'每人最多只能建立 {settings.MAX_LIVE_ROOMS_PER_USER} 個直播間')
+            else:
+                live_room = form.save(commit=False)
+                live_room.owner = request.user
+                live_room.save()
+                return redirect('room', room_name=live_room.name)
     else:
         form = RoomCreateForm()
     return render(request, 'chat/create_room.html', {'form': form})
+
+
+@login_required
+@require_POST
+def delete_room(request, room_name):
+    """刪除直播間（聊天記錄以 group_name 弱關聯，不隨之刪除）"""
+    live_room = Room.objects.filter(name=room_name, owner=request.user).first()
+    if live_room is None:
+        return HttpResponse(status=404)
+    live_room.delete()
+    return redirect('chat')
 
 
 @login_required

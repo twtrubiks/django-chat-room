@@ -35,6 +35,11 @@
                         {% csrf_token %}
                         <button class="live-owner-btn live-owner-btn--danger" type="submit">重新產生金鑰</button>
                     </form>
+                    <form method="post" action="{% url 'delete_room' room_name %}"
+                          onsubmit="return confirm('確定要刪除直播間？此動作無法復原（聊天記錄不會刪除）。');">
+                        {% csrf_token %}
+                        <button class="live-owner-btn live-owner-btn--danger" type="submit">刪除直播間</button>
+                    </form>
                 </div>
             </div>
             {% endif %}

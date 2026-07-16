@@ -26,6 +26,19 @@
                 </div>
             {% endfor %}
         </div>
+        {% if live_rooms.paginator.num_pages > 1 %}
+        <nav class="mb-4">
+            <ul class="pagination justify-content-center">
+                {% if live_rooms.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ live_rooms.previous_page_number }}">上一頁</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ live_rooms.number }} / {{ live_rooms.paginator.num_pages }}</span></li>
+                {% if live_rooms.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ live_rooms.next_page_number }}">下一頁</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
     {% else %}
         <p class="text-muted mb-4">目前還沒有直播間，開一個吧！</p>
     {% endif %}

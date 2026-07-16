@@ -155,3 +155,6 @@ LIVE_HOOK_SECRET = os.environ.get('LIVE_HOOK_SECRET', 'dev-live-hook-secret')
 
 # MediaMTX API 位址（compose 內網），開頁時對帳 is_live 用
 MEDIAMTX_API_URL = os.environ.get('MEDIAMTX_API_URL', 'http://mediamtx:9997')
+
+# 每人可建立的直播間數量上限
+MAX_LIVE_ROOMS_PER_USER = 5
