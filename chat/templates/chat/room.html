@@ -7,6 +7,11 @@
     {% if live_room %}
     <div class="room-layout">
         <div class="live-section">
+            {% if not user.is_authenticated %}
+            <div class="live-video-wrap">
+                <div class="live-offline">請<a href="{% url 'login' %}?next={{ request.path }}">登入</a>後觀看直播</div>
+            </div>
+            {% else %}
             <div class="live-video-wrap">
                 <video id="livePlayer" autoplay playsinline controls muted></video>
                 <div class="live-offline" id="liveOffline">主播尚未開播</div>
@@ -32,6 +37,7 @@
                     </form>
                 </div>
             </div>
+            {% endif %}
             {% endif %}
         </div>
     {% endif %}
@@ -293,14 +299,16 @@
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     });
 </script>
-{% if live_room %}
+{% if live_room and user.is_authenticated %}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js" crossorigin="anonymous"></script>
 <script>
     // ===== 直播播放器（WebRTC WHEP 預設，可切換 HLS）=====
+    // 播放需帶登入者的簽名 token（MediaMTX read 認證委派 Django 驗證）
     var streamIsLive = null;  // null = 尚未初始化
+    var readToken = encodeURIComponent('{{ live_read_token }}');
     var mtxBase = window.location.protocol + '//' + window.location.hostname;
-    var whepUrl = mtxBase + ':8889/' + room_name + '/whep';
-    var hlsUrl = mtxBase + ':8888/' + room_name + '/index.m3u8';
+    var whepUrl = mtxBase + ':8889/' + room_name + '/whep?token=' + readToken;
+    var hlsUrl = mtxBase + ':8888/' + room_name + '/index.m3u8?token=' + readToken;
 
     var livePlayer = document.getElementById('livePlayer');
     var playerProto = 'webrtc';

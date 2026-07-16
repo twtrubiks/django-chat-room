@@ -407,6 +407,11 @@ body {
     font-size: 16px;
 }
 
+.live-offline a {
+    color: #feca57;
+    margin: 0 4px;
+}
+
 .live-bar {
     display: flex;
     justify-content: space-between;

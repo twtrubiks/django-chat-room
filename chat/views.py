@@ -8,6 +8,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -15,6 +16,10 @@ from django.views.decorators.http import require_POST
 
 from .forms import RoomCreateForm
 from .models import Message, Room, generate_stream_key
+
+# 觀看直播的簽名 token：綁定房名、12 小時內有效
+_read_token_signer = signing.TimestampSigner(salt='live-read')
+READ_TOKEN_MAX_AGE = 12 * 3600
 
 
 # Create your views here.
@@ -87,11 +92,16 @@ def room(request, room_name):
         and request.user.is_authenticated
         and live_room.owner_id == request.user.id
     )
+    # 觀看直播需登入：登入者才拿得到播放用的簽名 token
+    live_read_token = ''
+    if live_room is not None and request.user.is_authenticated:
+        live_read_token = _read_token_signer.sign(live_room.name)
     return render(request, 'chat/room.html', {
         'chat_messages': chat_messages,
         'room_name': room_name,
         'live_room': live_room,
         'is_owner': is_owner,
+        'live_read_token': live_read_token,
     })
 
 
@@ -112,8 +122,22 @@ def stream_auth(request):
     except json.JSONDecodeError:
         return HttpResponse(status=400)
 
-    # 只限制推流，播放不設限
-    if data.get('action') != 'publish':
+    action = data.get('action')
+
+    # 播放需要登入：驗證 room view 發給登入者的簽名 token
+    if action == 'read':
+        query = parse_qs(data.get('query', ''))
+        token = (query.get('token') or [''])[0]
+        try:
+            value = _read_token_signer.unsign(token, max_age=READ_TOKEN_MAX_AGE)
+        except signing.BadSignature:
+            return HttpResponse(status=401)
+        if value == data.get('path'):
+            return HttpResponse(status=200)
+        return HttpResponse(status=401)
+
+    # 其餘非推流動作不設限
+    if action != 'publish':
         return HttpResponse(status=200)
 
     # RTMP 的 query string 帳密會被 MediaMTX 解析進 password 欄位，
