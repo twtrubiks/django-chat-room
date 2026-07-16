@@ -35,6 +35,8 @@ services:
         - "8189:8189/udp" # WebRTC ICE（必要）
       environment:
         - LIVE_HOOK_SECRET=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
+        # 覆蓋 mediamtx.yml 的 authHTTPAddress，帶上 secret（設定值無法 shell 展開，只能在此組 URL）
+        - MTX_AUTHHTTPADDRESS=http://app:8000/live/auth/?secret=${LIVE_HOOK_SECRET:-dev-live-hook-secret}
       volumes:
         - ./mediamtx.yml:/mediamtx.yml
 

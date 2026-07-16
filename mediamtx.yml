@@ -11,6 +11,8 @@ api: yes
 
 # 認證委派給 Django（回應 20x 放行、其他拒絕）
 # 推流帳密要用 query string（?user=&pass=），URL userinfo 寫法會收到空字串
+# 注意：docker-compose 以 MTX_AUTHHTTPADDRESS 覆蓋此值、附上 ?secret=，
+# 防止任何人直接打 /live/auth/ 當金鑰驗證 oracle
 authMethod: http
 authHTTPAddress: http://app:8000/live/auth/
 

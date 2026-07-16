@@ -90,6 +90,11 @@ def stream_auth(request):
     MediaMTX authHTTPAddress 委派認證端點，回應 20x 放行、其他拒絕。
     RTMP 推流帳密要用 query string（?user=&pass=），不能用 URL userinfo。
     """
+    # 只接受帶共享 secret 的請求（MediaMTX 端由 MTX_AUTHHTTPADDRESS 附上），
+    # 否則此端點會成為公開的金鑰驗證 oracle
+    if request.GET.get('secret') != settings.LIVE_HOOK_SECRET:
+        return HttpResponse(status=403)
+
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
