@@ -93,7 +93,10 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('redis', 6379)],
+            # redis-py 8.0 起預設 socket_timeout=5s,會和 channels_redis
+            # 的 BZPOPMIN 阻塞等待(brpop_timeout=5s)互相衝突,導致閒置
+            # 連線每 5 秒爆 TimeoutError 並踢掉 WebSocket,故明確關閉
+            'hosts': [{'host': 'redis', 'port': 6379, 'socket_timeout': None}],
         },
     }
 }
