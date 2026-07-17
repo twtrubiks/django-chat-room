@@ -36,20 +36,30 @@ class Command(BaseCommand):
             return
         for room in Room.objects.all():
             actual = room.name in ready_paths
-            if room.is_live == actual:
-                continue
-            room.is_live = actual
-            room.save(update_fields=['is_live'])
-            async_to_sync(get_channel_layer().group_send)(
-                room.name,
-                {'type': 'stream_status', 'is_live': actual},
-            )
-            self.stdout.write(f'{room.name}: is_live -> {actual}')
+            if room.is_live != actual:
+                room.is_live = actual
+                room.save(update_fields=['is_live'])
+                async_to_sync(get_channel_layer().group_send)(
+                    room.name,
+                    {'type': 'stream_status', 'is_live': actual},
+                )
+                self.stdout.write(f'{room.name}: is_live -> {actual}')
+            # 觀眾數每輪無條件廣播（不比對前值）：無需維護狀態，
+            # 新進房的觀眾最多等一輪就能拿到數字
+            if actual:
+                async_to_sync(get_channel_layer().group_send)(
+                    room.name,
+                    {'type': 'viewer_count', 'count': ready_paths[room.name]},
+                )
 
     def fetch_ready_paths(self):
         # 逐頁列出所有 path：API 一頁預設 100 筆，只讀第一頁
         # 會把排在後面的直播中房間誤判為離線
-        ready = set()
+        # 回傳 {path 名稱: 觀眾數}，只含 ready 的 path。
+        # readers 排除 hlsMuxer：HLS 觀眾全部藏在單一 muxer 後面
+        # 無法逐人計數，計入只會固定 +1；此數字是「逐連線拉流數」
+        # （WebRTC / RTMP 等），HLS 觀眾不在內
+        ready = {}
         page = 0
         while True:
             url = f'{settings.MEDIAMTX_API_URL}/v3/paths/list?itemsPerPage=100&page={page}'
@@ -58,7 +68,11 @@ class Command(BaseCommand):
                     data = json.load(resp)
             except (OSError, ValueError):
                 return None
-            ready.update(item['name'] for item in data.get('items', []) if item.get('ready'))
+            for item in data.get('items', []):
+                if item.get('ready'):
+                    ready[item['name']] = sum(
+                        1 for r in item.get('readers', []) if r.get('type') != 'hlsMuxer'
+                    )
             page += 1
             if page >= data.get('pageCount', 1):
                 return ready

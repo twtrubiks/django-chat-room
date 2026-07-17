@@ -131,6 +131,13 @@ class ChatConsumer(WebsocketConsumer):
             'is_live': event['is_live'],
         }))
 
+    # Receive viewer count from reconciler (via group_send)
+    def viewer_count(self, event):
+        self.send(text_data=json.dumps({
+            'message_type': 'viewer_count',
+            'count': event['count'],
+        }))
+
     # Receive message from room group
     def chat_message(self, event):
         message_type = event.get('message_type', 'text')

@@ -430,6 +430,18 @@ body {
     display: none;
 }
 
+.live-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.live-viewers {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    display: none;
+}
+
 .live-proto-btn {
     background: rgba(255, 255, 255, 0.2);
     border: none;

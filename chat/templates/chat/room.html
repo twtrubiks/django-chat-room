@@ -17,7 +17,10 @@
                 <div class="live-offline" id="liveOffline">主播尚未開播</div>
             </div>
             <div class="live-bar">
-                <span class="live-badge" id="liveBadge">● LIVE</span>
+                <span class="live-status">
+                    <span class="live-badge" id="liveBadge">● LIVE</span>
+                    <span class="live-viewers" id="liveViewers" title="觀眾數為近似值，不含 HLS 觀眾"><i class="fas fa-user"></i> <span id="liveViewerCount">–</span></span>
+                </span>
                 <span class="live-proto">
                     <button class="live-proto-btn active" id="btnWebrtc" type="button">WebRTC</button>
                     <button class="live-proto-btn" id="btnHls" type="button">HLS</button>
@@ -178,6 +181,14 @@
             var receive_user = data['user'];
             var currentUser = "{{user}}";
             var chatMessagesContainer = $('#chatMessages');
+
+            // 觀眾數（由 reconciler 每 30 秒廣播，近似值：不含 HLS 觀眾）
+            if (messageType === 'viewer_count') {
+                if (typeof setViewerCount === 'function') {
+                    setViewerCount(data['count']);
+                }
+                return;
+            }
 
             // 開播 / 關播通知（由 MediaMTX webhook 廣播）
             if (messageType === 'stream_status') {
@@ -397,12 +408,19 @@
         if (isLive === streamIsLive) { return; }
         streamIsLive = isLive;
         $('#liveBadge').toggle(isLive);
+        $('#liveViewers').toggle(isLive);
         if (isLive) {
             startPlayer();
         } else {
             stopPlayer();
             showOffline('主播尚未開播');
+            // 下次開播時顯示佔位符，避免殘留上一場的數字
+            $('#liveViewerCount').text('–');
         }
+    }
+
+    function setViewerCount(count) {
+        $('#liveViewerCount').text(count);
     }
 
     $('.live-proto-btn').click(function () {
