@@ -166,16 +166,49 @@
     var reconnectDelay = 1000;
     var maxDelay = 30000;
 
+    // 心跳：定時送 ping，逾時未收到任何回應視為半開連線（half-open），
+    // 主動 close 觸發既有的重連機制。瀏覽器 JS 看不到協定層 ping frame，
+    // 所以用應用層 JSON ping/pong 偵測。
+    var heartbeatTimer = null;
+    var pongTimer = null;
+    var HEARTBEAT_MS = 25000;  // 每 25 秒送一次 ping
+    var PONG_WAIT_MS = 10000;  // 10 秒內沒回應視為斷線
+
+    function startHeartbeat() {
+        stopHeartbeat();
+        heartbeatTimer = setInterval(function () {
+            if (chatSocket.readyState !== WebSocket.OPEN) { return; }
+            chatSocket.send(JSON.stringify({ 'type': 'ping' }));
+            pongTimer = setTimeout(function () {
+                console.warn('No pong received, closing socket to reconnect');
+                chatSocket.close();  // 觸發 onclose → 既有的指數退避重連
+            }, PONG_WAIT_MS);
+        }, HEARTBEAT_MS);
+    }
+
+    function stopHeartbeat() {
+        if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+        if (pongTimer) { clearTimeout(pongTimer); pongTimer = null; }
+    }
+
     function connectWebSocket() {
         chatSocket = new WebSocket(websocket_str);
 
         chatSocket.onopen = function () {
             console.log('Chat socket connected');
             reconnectDelay = 1000;
+            startHeartbeat();
         };
 
         chatSocket.onmessage = function (e) {
             var data = JSON.parse(e.data);
+
+            // 任何訊息都代表連線活著，先解除 pong watchdog
+            if (pongTimer) { clearTimeout(pongTimer); pongTimer = null; }
+            if (data['message_type'] === 'pong') {
+                return;
+            }
+
             var messageType = data['message_type'] || 'text';
             var now_time = data['now_time'];
             var receive_user = data['user'];
@@ -254,6 +287,7 @@
         };
 
         chatSocket.onclose = function () {
+            stopHeartbeat();
             console.error('Chat socket closed, reconnecting in', reconnectDelay, 'ms');
             setTimeout(connectWebSocket, reconnectDelay);
             reconnectDelay = Math.min(reconnectDelay * 1.5, maxDelay);

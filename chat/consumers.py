@@ -47,6 +47,12 @@ class ChatConsumer(WebsocketConsumer):
         if not self.scope['user'].is_authenticated:
             return
 
+        # 心跳：只回給該 socket，不進 DB、不廣播，
+        # 供前端偵測半開連線（half-open）並主動重連
+        if msg_type == 'ping':
+            self.send(text_data=json.dumps({'message_type': 'pong'}))
+            return
+
         if msg_type == 'location':
             self._handle_location(text_data_json, user, now_time)
         else:

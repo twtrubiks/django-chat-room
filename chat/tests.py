@@ -2,9 +2,11 @@ import io
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 
+from chat.consumers import ChatConsumer
 from chat.management.commands.reconcile_live import Command
 from chat.models import Room
 
@@ -62,6 +64,38 @@ class FetchReadyPathsTests(TestCase):
     def test_returns_none_when_api_unreachable(self, mock_urlopen):
         mock_urlopen.side_effect = OSError('connection refused')
         self.assertIsNone(Command().fetch_ready_paths())
+
+
+@override_settings(CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}})
+class HeartbeatTests(SimpleTestCase):
+    """WebSocket 心跳：ping 直接回 pong 給該 socket，不進 DB、不廣播。
+
+    用 SimpleTestCase（禁止 DB 存取）順便驗證 ping 路徑不寫 DB。
+    """
+
+    class FakeUser:
+        is_anonymous = False
+        is_authenticated = True
+
+        def __str__(self):
+            return 'tester'
+
+    async def connect(self):
+        communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), '/ws/chat/testroom/')
+        communicator.scope['user'] = self.FakeUser()
+        communicator.scope['url_route'] = {'kwargs': {'room_name': 'testroom'}}
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+        return communicator
+
+    async def test_ping_replies_pong(self):
+        communicator = await self.connect()
+        await communicator.send_json_to({'type': 'ping'})
+        self.assertEqual(await communicator.receive_json_from(),
+                         {'message_type': 'pong'})
+        # pong 之後沒有其他訊息（未廣播、未回音給群組）
+        self.assertTrue(await communicator.receive_nothing())
+        await communicator.disconnect()
 
 
 class ReconcileTests(TestCase):
