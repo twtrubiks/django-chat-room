@@ -420,9 +420,25 @@ class StreamAuthTests(TestCase):
         with patch('django.core.signing.time.time', return_value=now + READ_TOKEN_MAX_AGE + 1):
             self.assertEqual(self.read(token), 401)
 
-    def test_other_actions_are_allowed(self):
-        # api / metrics / pprof 由 authHTTPExclude 排除，其餘非推流動作不設限
-        self.assertEqual(self.auth({'action': 'playback', 'path': 'myroom'}), 200)
+    # --- 錄影回放（playback）：與觀看直播相同，需要登入者的 token ---
+
+    def test_playback_requires_read_token(self):
+        def playback(token, path='myroom'):
+            return self.auth({'action': 'playback', 'path': path, 'query': f'token={token}'})
+        self.assertEqual(playback(self.read_token()), 200)
+        self.assertEqual(playback(''), 401)
+        self.assertEqual(playback(self.read_token('otherroom')), 401)
+        self.assertEqual(self.auth({'action': 'playback', 'path': 'myroom'}), 401)
+
+    # --- 白名單以外的動作 ---
+
+    def test_unknown_actions_are_rejected(self):
+        # api / metrics / pprof 應由 authHTTPExclude 排除；設定漏掉或 MediaMTX 新增動作時一律拒絕
+        for action in ['api', 'metrics', 'pprof', 'record', '', None]:
+            with self.subTest(action=action):
+                self.assertEqual(self.auth({'action': action, 'path': 'myroom',
+                                            'password': self.room.stream_key}), 401)
+        self.assertEqual(self.auth({'path': 'myroom'}), 401)
 
 
 class StreamHookTests(TestCase):

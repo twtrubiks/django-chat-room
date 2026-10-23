@@ -18,6 +18,7 @@ authHTTPAddress: http://app:8000/live/auth/
 
 # 注意：自訂此清單會覆蓋預設值，api / metrics / pprof 必須一併列上
 # （read 不排除：觀看直播需登入，由 Django 驗證簽名 token）
+# Django 端對 action 採白名單，沒排除的 api 會被拒絕，reconciler 就讀不到 API
 authHTTPExclude:
   - action: api
   - action: metrics

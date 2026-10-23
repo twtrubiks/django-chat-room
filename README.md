@@ -169,6 +169,10 @@ authHTTPAddress: http://app:8000/live/auth/
 
 播放器帶著它去打 MediaMTX，MediaMTX 再委派 `/live/auth/` 的 `read` action 驗證。所以 `authHTTPExclude` 只排除 `api` / `metrics` / `pprof`，**不排除 `read`**。
 
+`/live/auth/` 對 action 採**白名單**：`publish` 驗證串流金鑰、`read` / `playback`（錄影回放）驗證登入者的 token，其餘一律拒絕（包含 MediaMTX 日後新增的動作）。
+
+因此 `authHTTPExclude` 的 `api` / `metrics` / `pprof` 不能拿掉，否則會被 Django 拒絕，reconciler 就讀不到 MediaMTX API。
+
 ### 開播狀態與對帳
 
 MediaMTX 的 `runOnReady` / `runOnNotReady` 會通知 Django：
@@ -228,6 +232,7 @@ reconciler 順手把數量以 `viewer_count` 廣播到房間，前端顯示在 L
 |------|------|
 | **`/live/auth/` 變成金鑰驗證 oracle** | 若不設限，任何人都能拿它暴力猜 stream key。故加上共享 secret（由 compose 的 `MTX_AUTHHTTPADDRESS` 附上 `?secret=`），並用 `constant_time_compare` 比對 |
 | **兩組 secret 必須分開** | auth secret 只能走 URL query（MediaMTX 限制），**必然出現在 server log**；hook secret 走 POST body 不進 log。權限混用等於把 hook 權限也洩進 log |
+| **未知的 action 被放行** | `/live/auth/` 原本對 `publish` / `read` 以外的動作一律回 200，MediaMTX 新增動作時會被無條件放行。改為白名單，不認得的動作一律拒絕（fail closed） |
 | **webhook 偽造** | `/live/hook/` 用 `LIVE_HOOK_SECRET` 驗證來源，否則任何人都能偽造「開播」 |
 | **stream_key 外洩** | template 只在 `room.owner == request.user` 時渲染；外洩時房主可自行「重新產生金鑰」輪替 |
 | **刪房後的聊天記錄外洩** | 房名釋放後可被他人重建，留著舊訊息會外洩給新房主與新觀眾。故刪除直播間時，在同一個 transaction 內一併刪除該房名的 `Message` |

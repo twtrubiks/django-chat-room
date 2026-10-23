@@ -124,8 +124,12 @@ def stream_auth(request):
 
     action = data.get('action')
 
-    # 播放需要登入：驗證 room view 發給登入者的簽名 token
-    if action == 'read':
+    # 白名單：只放行 read / playback（需登入）與 publish（需金鑰），
+    # 其餘一律拒絕，包含 MediaMTX 日後新增的動作。api / metrics / pprof
+    # 已由 mediamtx.yml 的 authHTTPExclude 排除、不會進來；設定漏掉時寧可失敗也不放行
+
+    # 觀看直播（read）與錄影回放（playback）需要登入：驗證 room view 發給登入者的簽名 token
+    if action in ('read', 'playback'):
         query = parse_qs(data.get('query', ''))
         token = (query.get('token') or [''])[0]
         try:
@@ -136,9 +140,8 @@ def stream_auth(request):
             return HttpResponse(status=200)
         return HttpResponse(status=401)
 
-    # 其餘非推流動作不設限
     if action != 'publish':
-        return HttpResponse(status=200)
+        return HttpResponse(status=401)
 
     # RTMP 的 query string 帳密會被 MediaMTX 解析進 password 欄位，
     # 但 WHIP（WebRTC 推流）只會原封放在 query 欄位（實測），需自行解析；
