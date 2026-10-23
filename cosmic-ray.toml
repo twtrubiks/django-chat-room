@@ -16,7 +16,7 @@ module-path = [
 ]
 timeout = 60.0
 excluded-modules = []
-test-command = "python manage.py test --noinput --failfast -v 0"
+test-command = "python manage.py test --noinput --failfast -v 0 --exclude-tag=browser"
 
 [cosmic-ray.distributor]
 name = "local"

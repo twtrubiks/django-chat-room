@@ -247,6 +247,27 @@ reconciler 順手把數量以 `viewer_count` 廣播到房間，前端顯示在 L
 python manage.py test
 ```
 
+### 瀏覽器測試
+
+`room.html` / `index.html` 裡的前端 JS（送訊息、XSS 防護、心跳、斷線重連退避、直播播放器、房主面板、分享位置）
+
+用 [Playwright](https://playwright.dev/python/) 測試（`chat/tests/test_browser.py`），需要另外安裝，沒安裝時會自動 skip，
+
+```cmd
+pip install playwright
+playwright install chromium
+```
+
+測試完全離線：CDN 資源在本機回應（jQuery 用 Django admin 內建的同版本，Leaflet / hls.js 換成 stub），
+
+WebSocket 由 Playwright 扮演 server，心跳（25 秒）與重連退避用假時鐘快轉，不必真的等。
+
+只想跑後端測試可以排除，
+
+```cmd
+python manage.py test --exclude-tag=browser
+```
+
 ### 變異測試（mutation testing）
 
 變異測試會故意改壞程式（例如把 `>=` 改成 `>`、拿掉 `@login_required`），檢查測試能不能發現，用來衡量測試**是否真的有驗證行為**，而不只是有跑到那行。
@@ -260,6 +281,8 @@ cosmic-ray baseline cosmic-ray.toml
 cosmic-ray exec cosmic-ray.toml session.sqlite
 cr-report session.sqlite --show-diff
 ```
+
+`cosmic-ray.toml` 的測試指令排除了瀏覽器測試（每個變異體都要跑一次整套，瀏覽器測試太慢；後端邏輯已有單元測試涵蓋）。
 
 注意 `cosmic-ray exec` 會**直接改寫工作目錄的原始碼**（每個變異體跑完會還原），中途中斷可能留下被改壞的檔案，建議在乾淨的 git 工作目錄或另一份 clone 執行。
 
