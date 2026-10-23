@@ -354,6 +354,13 @@ class StreamAuthTests(TestCase):
         for body in ['[1, 2]', 'null', '"publish"']:
             self.assertEqual(self.auth(body), 400)
 
+    def test_non_string_query_is_treated_as_missing(self):
+        # MediaMTX 送的 query 一定是字串；格式不對時照樣回 401，不能在 parse_qs 炸成 500
+        for query in [123, None, ['token=x'], {'pass': 'x'}]:
+            with self.subTest(query=query):
+                self.assertEqual(self.auth({'action': 'read', 'path': 'myroom', 'query': query}), 401)
+                self.assertEqual(self.publish(query=query), 401)
+
     # --- 推流（publish） ---
 
     def test_publish_with_password_field(self):

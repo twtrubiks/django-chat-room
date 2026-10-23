@@ -102,6 +102,14 @@ def room(request, room_name):
     })
 
 
+def _query_param(data, name):
+    """從 MediaMTX 原封轉來的 query 欄位取參數；欄位不是字串時視為沒帶"""
+    query = data.get('query')
+    if not isinstance(query, str):
+        return ''
+    return (parse_qs(query).get(name) or [''])[0]
+
+
 @csrf_exempt
 @require_POST
 def stream_auth(request):
@@ -130,8 +138,7 @@ def stream_auth(request):
 
     # 觀看直播（read）與錄影回放（playback）需要登入：驗證 room view 發給登入者的簽名 token
     if action in ('read', 'playback'):
-        query = parse_qs(data.get('query', ''))
-        token = (query.get('token') or [''])[0]
+        token = _query_param(data, 'token')
         try:
             value = _read_token_signer.unsign(token, max_age=READ_TOKEN_MAX_AGE)
         except signing.BadSignature:
@@ -148,8 +155,7 @@ def stream_auth(request):
     # WHIP 走 HTTP Basic auth 時則會填入 password 欄位
     password = data.get('password', '')
     if not password:
-        query = parse_qs(data.get('query', ''))
-        password = (query.get('pass') or [''])[0]
+        password = _query_param(data, 'pass')
 
     room = Room.objects.filter(name=data.get('path', '')).first()
     if room and password and constant_time_compare(password, room.stream_key):
