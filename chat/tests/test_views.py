@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.core import signing
 from django.test import Client, TestCase
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
 from chat.models import Message, Room
 from chat.tests.helpers import concurrent_room_update
@@ -377,6 +378,15 @@ class StreamAuthTests(TestCase):
         for password in [key[:-1], key[:1], '0', key.upper(), key + '0', 'z' * len(key)]:
             with self.subTest(password=password):
                 self.assertEqual(self.publish(password=password), 401)
+
+    def test_publish_compares_key_in_constant_time(self):
+        # 用 == 比對時，回應時間會隨相同前綴的長度變化，可被逐字元猜出金鑰
+        key = self.room.stream_key
+        with patch('chat.views.constant_time_compare', wraps=constant_time_compare) as compare:
+            self.assertEqual(self.publish(password='guess'), 401)
+            self.assertEqual(self.publish(password=key), 200)
+        compare.assert_any_call('guess', key)
+        compare.assert_any_call(key, key)
 
     def test_publish_rejects_key_of_another_room(self):
         other_key = Room.objects.get(name='otherroom').stream_key

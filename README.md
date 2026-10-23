@@ -230,7 +230,7 @@ reconciler 順手把數量以 `viewer_count` 廣播到房間，前端顯示在 L
 
 | 項目 | 做法 |
 |------|------|
-| **`/live/auth/` 變成金鑰驗證 oracle** | 若不設限，任何人都能拿它暴力猜 stream key。故加上共享 secret（由 compose 的 `MTX_AUTHHTTPADDRESS` 附上 `?secret=`），並用 `constant_time_compare` 比對 |
+| **`/live/auth/` 變成金鑰驗證 oracle** | 若不設限，任何人都能拿它暴力猜 stream key。故加上共享 secret（由 compose 的 `MTX_AUTHHTTPADDRESS` 附上 `?secret=`）。secret 與串流金鑰都用 `constant_time_compare` 比對，回應時間才不會洩漏猜中了幾個字元 |
 | **兩組 secret 必須分開** | auth secret 只能走 URL query（MediaMTX 限制），**必然出現在 server log**；hook secret 走 POST body 不進 log。權限混用等於把 hook 權限也洩進 log |
 | **未知的 action 被放行** | `/live/auth/` 原本對 `publish` / `read` 以外的動作一律回 200，MediaMTX 新增動作時會被無條件放行。改為白名單，不認得的動作一律拒絕（fail closed） |
 | **webhook 偽造** | `/live/hook/` 用 `LIVE_HOOK_SECRET` 驗證來源，否則任何人都能偽造「開播」 |

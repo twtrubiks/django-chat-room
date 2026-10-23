@@ -152,7 +152,7 @@ def stream_auth(request):
         password = (query.get('pass') or [''])[0]
 
     room = Room.objects.filter(name=data.get('path', '')).first()
-    if room and password and password == room.stream_key:
+    if room and password and constant_time_compare(password, room.stream_key):
         return HttpResponse(status=200)
     return HttpResponse(status=401)
 
