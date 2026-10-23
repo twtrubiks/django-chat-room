@@ -60,7 +60,8 @@ class ChatConsumer(WebsocketConsumer):
 
     def _handle_text(self, payload, user, now_time):
         message = payload.get('message', '')
-        if not message:
+        # 前端已擋只有空白的訊息，但不經瀏覽器的 client 仍可能送來
+        if not isinstance(message, str) or not message.strip():
             return
 
         # 存原文，XSS 防禦交給輸出端：

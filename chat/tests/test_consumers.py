@@ -138,6 +138,19 @@ class ChatConsumerTests(TransactionTestCase):
         await self.disconnect_all()
         self.assertEqual(await Message.objects.acount(), 0)
 
+    async def test_blank_or_non_string_message_is_ignored(self):
+        communicator = await self.connect(self.alice)
+        for message in [' ', '\n\t ', '\u3000', 123, ['hi'], {'text': 'hi'}, None]:
+            await communicator.send_json_to({'type': 'text', 'message': message})
+        self.assertTrue(await communicator.receive_nothing())
+        self.assertEqual(await Message.objects.acount(), 0)
+        # 只擋全空白，前後空白照原文保留
+        await communicator.send_json_to({'type': 'text', 'message': ' hi\n'})
+        payload = await communicator.receive_json_from()
+        self.assertEqual(payload['message'], ' hi\n')
+        await self.disconnect_all()
+        self.assertEqual((await Message.objects.aget()).message, ' hi\n')
+
     async def test_messages_stay_in_their_room(self):
         sender = await self.connect(self.alice, room='room_a')
         other = await self.connect(self.bob, room='room_b')
