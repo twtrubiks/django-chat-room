@@ -64,3 +64,14 @@ class LoginLogoutTests(TestCase):
         response = self.client.post('/account/logout/')
         self.assertRedirects(response, '/account/login/')
         self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_logout_rejects_get(self):
+        # GET 登出可被其他網站用 <img src="/account/logout/"> 觸發，必須只接受 POST
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get('/account/logout/').status_code, 405)
+        self.assertEqual(self.client.session['_auth_user_id'], str(self.user.pk))
+
+    def test_navbar_logout_uses_post_form(self):
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get('/chat/'),
+                            '<form method="post" action="/account/logout/"')
