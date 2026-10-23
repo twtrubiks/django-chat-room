@@ -114,9 +114,12 @@ def stream_auth(request):
     if not constant_time_compare(request.GET.get('secret', ''), settings.LIVE_AUTH_SECRET):
         return HttpResponse(status=403)
 
+    # ValueError 涵蓋 JSONDecodeError 與非 UTF-8 body 的 UnicodeDecodeError
     try:
         data = json.loads(request.body)
-    except json.JSONDecodeError:
+    except ValueError:
+        return HttpResponse(status=400)
+    if not isinstance(data, dict):
         return HttpResponse(status=400)
 
     action = data.get('action')
