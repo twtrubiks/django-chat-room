@@ -301,14 +301,20 @@
     connectWebSocket();
 
     $("#btn-input").focus();
-    $("#btn-input").keyup(function(e){
-      if (e.keyCode === 13) {  // enter, return
+    // Enter 送出、Shift+Enter 換行。用 keydown 並取消預設動作：
+    // 若在 keyup 才送出，textarea 已經先插入換行，訊息會多一個 '\n'（空白時也會送出）
+    $("#btn-input").keydown(function(e){
+      if (e.keyCode === 13 && !e.shiftKey) {  // enter, return
+            e.preventDefault();
             $("#btn-chat").click();
         }
     });
 
     $("#btn-chat").click(function() {
       var message = $('#btn-input').val();
+      if (!message.trim()) {  // 只有空白不送
+          return;
+      }
       if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
                 'type': 'text',
