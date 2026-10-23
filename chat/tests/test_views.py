@@ -371,6 +371,13 @@ class StreamAuthTests(TestCase):
         self.assertEqual(self.publish(), 401)
         self.assertEqual(self.publish(password='', query=''), 401)
 
+    def test_publish_requires_exact_key(self):
+        # 用固定的值測，不依賴隨機金鑰的大小關係（字典序在金鑰之前 / 之後的都要擋）
+        key = self.room.stream_key
+        for password in [key[:-1], key[:1], '0', key.upper(), key + '0', 'z' * len(key)]:
+            with self.subTest(password=password):
+                self.assertEqual(self.publish(password=password), 401)
+
     def test_publish_rejects_key_of_another_room(self):
         other_key = Room.objects.get(name='otherroom').stream_key
         self.assertEqual(self.publish(password=other_key), 401)
