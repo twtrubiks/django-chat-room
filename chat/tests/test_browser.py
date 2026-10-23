@@ -52,7 +52,6 @@ window.__leaflet = [];
         },
         tileLayer: function (url, opts) { window.__tileOptions = opts; return layer('tileLayer', [url]); },
         marker: function (latlng) { return layer('marker', [latlng]); },
-        circle: function (latlng, opts) { return layer('circle', [latlng, opts.radius]); },
     };
 })();
 """
@@ -342,8 +341,6 @@ class ChatMessageTests(BrowserTestCase):
         tile_options = page.evaluate('window.__tileOptions')
         self.assertEqual(tile_options['maxZoom'], 19)
         self.assertIn('https://www.openstreetmap.org/copyright', tile_options['attribution'])
-        # 訊息沒有精度資訊，不畫精度圈
-        self.assertFalse([c for c in calls if c[0] == 'circle'])
 
     def test_history(self):
         for i in range(30):

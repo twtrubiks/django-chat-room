@@ -111,7 +111,7 @@
 {% block js %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin="anonymous"></script>
 <script>
-    function renderLocationMessage(container, lat, lng, accuracy) {
+    function renderLocationMessage(container, lat, lng) {
         var map = L.map(container, {
             zoomControl: false,
             dragging: false,
@@ -127,9 +127,6 @@
             maxZoom: 19
         }).addTo(map);
         L.marker([lat, lng]).addTo(map);
-        if (accuracy && accuracy > 0) {
-            L.circle([lat, lng], { radius: accuracy, color: '#667eea', weight: 1, fillOpacity: 0.15 }).addTo(map);
-        }
         return map;
     }
 
@@ -149,7 +146,7 @@
             var lat = parseFloat($(this).data('lat'));
             var lng = parseFloat($(this).data('lng'));
             if (!isNaN(lat) && !isNaN(lng)) {
-                renderLocationMessage(this, lat, lng, null);
+                renderLocationMessage(this, lat, lng);
             }
         });
         // Hide location button if geolocation not supported
@@ -279,7 +276,7 @@
             if (messageType === 'location') {
                 var mapEl = $node.find('.location-map')[0];
                 if (mapEl) {
-                    renderLocationMessage(mapEl, parseFloat(data['latitude']), parseFloat(data['longitude']), null);
+                    renderLocationMessage(mapEl, parseFloat(data['latitude']), parseFloat(data['longitude']));
                 }
             }
 
