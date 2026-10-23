@@ -16,7 +16,7 @@ import re
 import time
 from pathlib import Path
 from unittest import SkipTest
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 import django
 from django.conf import settings
@@ -242,6 +242,13 @@ class ChatMessageTests(BrowserTestCase):
         self.assertEqual(self.chat.connections[0].url, f'ws://127.0.0.1:{port}/ws/chat/chat_lobby/')
         # 開頁就能直接打字
         self.assertEqual(page.evaluate('document.activeElement.id'), 'btn-input')
+
+    def test_room_name_is_escaped_for_js(self):
+        # 網址的房名可以是任意字元：反斜線會吃掉 JS 字串的結尾引號、
+        # HTML 轉義會把 ' 變成 &#x27;，都必須用 escapejs 轉成 JS 字串
+        name = "it's\\<b>"
+        page = self.open_page('/chat/' + quote(name) + '/', chat_server=False)
+        self.assertEqual(page.evaluate('room_name'), name)
 
     def test_enter_sends_text_message(self):
         page = self.open_lobby()

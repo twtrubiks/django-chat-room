@@ -155,7 +155,7 @@
         }
     });
 
-    var room_name = '{{ room_name }}';
+    var room_name = '{{ room_name|escapejs }}';
     var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
     var websocket_str = ws_scheme + '://' + window.location.host + '/ws/chat/' + room_name + '/';
 
