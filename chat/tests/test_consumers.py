@@ -54,9 +54,11 @@ class HeartbeatTests(SimpleTestCase):
             {'text_data': '"ping"'},
             {'bytes_data': b'\x00\x01'},  # 二進位 frame
         ]:
-            with self.subTest(frame=frame), self.assertLogs('chat.consumers', 'WARNING'):
+            with self.subTest(frame=frame), self.assertLogs('chat.consumers', 'WARNING') as logs:
                 await communicator.send_to(**frame)
                 self.assertTrue(await communicator.receive_nothing())
+            # log 要帶上收到的內容，才查得出是什麼壞掉
+            self.assertIn(repr(*frame.values()), logs.output[0])
         # consumer 沒有因此掛掉斷線：之後的心跳仍有回應
         await communicator.send_json_to({'type': 'ping'})
         self.assertEqual(await communicator.receive_json_from(), {'message_type': 'pong'})
