@@ -36,8 +36,17 @@ class ChatConsumer(WebsocketConsumer):
         )
 
     # Receive message from WebSocket
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
+    def receive(self, text_data=None, bytes_data=None):
+        # 只接受 JSON 物件；非 JSON、二進位 frame 等壞掉的輸入直接忽略，
+        # 丟出例外的話 Channels 會把整條連線關掉
+        try:
+            text_data_json = json.loads(text_data)
+        except (TypeError, ValueError):  # TypeError：二進位 frame 的 text_data 是 None
+            text_data_json = None
+        if not isinstance(text_data_json, dict):
+            frame = text_data if text_data is not None else bytes_data
+            logger.warning("Invalid WebSocket frame: %.100r", frame)
+            return
         msg_type = text_data_json.get('type', 'text')
         user = str(self.scope['user'])
         # localtime() 回傳 TIME_ZONE 的 aware 時間，

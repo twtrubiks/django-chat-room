@@ -45,6 +45,23 @@ class HeartbeatTests(SimpleTestCase):
         self.assertTrue(await communicator.receive_nothing())
         await communicator.disconnect()
 
+    async def test_invalid_frames_are_ignored(self):
+        communicator = await self.connect()
+        for frame in [
+            {'text_data': 'not json'},
+            {'text_data': '[1, 2]'},       # JSON 但不是物件
+            {'text_data': 'null'},
+            {'text_data': '"ping"'},
+            {'bytes_data': b'\x00\x01'},  # 二進位 frame
+        ]:
+            with self.subTest(frame=frame), self.assertLogs('chat.consumers', 'WARNING'):
+                await communicator.send_to(**frame)
+                self.assertTrue(await communicator.receive_nothing())
+        # consumer 沒有因此掛掉斷線：之後的心跳仍有回應
+        await communicator.send_json_to({'type': 'ping'})
+        self.assertEqual(await communicator.receive_json_from(), {'message_type': 'pong'})
+        await communicator.disconnect()
+
 
 class ChatConsumerTests(TransactionTestCase):
     """ChatConsumer：連線認證、文字 / 位置訊息的存檔與廣播、直播事件轉送。
