@@ -234,6 +234,32 @@ reconciler 順手把數量以 `viewer_count` 廣播到房間，前端顯示在 L
 | **保留路徑撞名** | `create` 是 `/chat/create/` 的保留路徑，撞名的房間會永遠進不去，故在 form 層擋掉 |
 | **SQLite 併發** | 本專案用 SQLite。直播情境下 webhook + 聊天訊息寫入會增加寫入競爭，若要壓測或上線建議換 PostgreSQL |
 
+## 測試
+
+測試不需要 Redis / MediaMTX（channel layer 改用 `InMemoryChannelLayer`，MediaMTX API 以 mock 取代），
+
+```cmd
+python manage.py test
+```
+
+### 變異測試（mutation testing）
+
+變異測試會故意改壞程式（例如把 `>=` 改成 `>`、拿掉 `@login_required`），檢查測試能不能發現，用來衡量測試**是否真的有驗證行為**，而不只是有跑到那行。
+
+本專案用 [cosmic-ray](https://github.com/sixty-north/cosmic-ray)，設定在 `cosmic-ray.toml`，
+
+```cmd
+pip install cosmic-ray
+cosmic-ray init cosmic-ray.toml session.sqlite
+cosmic-ray baseline cosmic-ray.toml
+cosmic-ray exec cosmic-ray.toml session.sqlite
+cr-report session.sqlite --show-diff
+```
+
+注意 `cosmic-ray exec` 會**直接改寫工作目錄的原始碼**（每個變異體跑完會還原），中途中斷可能留下被改壞的檔案，建議在乾淨的 git 工作目錄或另一份 clone 執行。
+
+不用 mutmut 3 的原因：它會跳過所有加了 decorator 的函式，而本專案最關鍵的 `stream_auth`、`stream_hook`、`create_room` 等 view 全都有 `@login_required` / `@csrf_exempt` / `@require_POST`。
+
 ## 其他說明
 
 ### 說明一
