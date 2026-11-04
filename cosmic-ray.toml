@@ -1,0 +1,22 @@
+# 變異測試（mutation testing）設定，用法見 README「測試」一節
+[cosmic-ray]
+module-path = [
+    "chat/views.py",
+    "chat/consumers.py",
+    "chat/models.py",
+    "chat/forms.py",
+    "chat/admin.py",
+    "chat/urls.py",
+    "chat/routing.py",
+    "chat/management/commands/reconcile_live.py",
+    "account/views.py",
+    "account/forms.py",
+    "account/urls.py",
+    "django_chat_room/urls.py",
+]
+timeout = 60.0
+excluded-modules = []
+test-command = "python manage.py test --noinput --failfast -v 0"
+
+[cosmic-ray.distributor]
+name = "local"
