@@ -111,7 +111,7 @@
 {% block js %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" crossorigin="anonymous"></script>
 <script>
-    function renderLocationMessage(container, lat, lng, accuracy) {
+    function renderLocationMessage(container, lat, lng) {
         var map = L.map(container, {
             zoomControl: false,
             dragging: false,
@@ -127,9 +127,6 @@
             maxZoom: 19
         }).addTo(map);
         L.marker([lat, lng]).addTo(map);
-        if (accuracy && accuracy > 0) {
-            L.circle([lat, lng], { radius: accuracy, color: '#667eea', weight: 1, fillOpacity: 0.15 }).addTo(map);
-        }
         return map;
     }
 
@@ -149,7 +146,7 @@
             var lat = parseFloat($(this).data('lat'));
             var lng = parseFloat($(this).data('lng'));
             if (!isNaN(lat) && !isNaN(lng)) {
-                renderLocationMessage(this, lat, lng, null);
+                renderLocationMessage(this, lat, lng);
             }
         });
         // Hide location button if geolocation not supported
@@ -158,7 +155,7 @@
         }
     });
 
-    var room_name = '{{ room_name }}';
+    var room_name = '{{ room_name|escapejs }}';
     var ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
     var websocket_str = ws_scheme + '://' + window.location.host + '/ws/chat/' + room_name + '/';
 
@@ -279,7 +276,7 @@
             if (messageType === 'location') {
                 var mapEl = $node.find('.location-map')[0];
                 if (mapEl) {
-                    renderLocationMessage(mapEl, parseFloat(data['latitude']), parseFloat(data['longitude']), null);
+                    renderLocationMessage(mapEl, parseFloat(data['latitude']), parseFloat(data['longitude']));
                 }
             }
 
@@ -301,14 +298,20 @@
     connectWebSocket();
 
     $("#btn-input").focus();
-    $("#btn-input").keyup(function(e){
-      if (e.keyCode === 13) {  // enter, return
+    // Enter 送出、Shift+Enter 換行。用 keydown 並取消預設動作：
+    // 若在 keyup 才送出，textarea 已經先插入換行，訊息會多一個 '\n'（空白時也會送出）
+    $("#btn-input").keydown(function(e){
+      if (e.keyCode === 13 && !e.shiftKey) {  // enter, return
+            e.preventDefault();
             $("#btn-chat").click();
         }
     });
 
     $("#btn-chat").click(function() {
       var message = $('#btn-input').val();
+      if (!message.trim()) {  // 只有空白不送
+          return;
+      }
       if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
                 'type': 'text',
