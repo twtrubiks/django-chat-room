@@ -1,14 +1,9 @@
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.views.decorators.http import require_POST
 
 from .forms import UserRegistrationForm
 from django.contrib.auth import logout
 from django.shortcuts import redirect
-
-
-@login_required
-def dashboard(request):
-    return render(request, 'chat/index.html', {})
 
 
 def register(request):
@@ -31,6 +26,9 @@ def register(request):
                   'account/register.html',
                   {'user_form': user_form})
 
+
+# 只接受 POST：GET 登出可被其他網站用 <img src="/account/logout/"> 觸發（CSRF 登出）
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect('login')
